@@ -85,6 +85,7 @@ test-results/
 # Development files
 sandbox/
 dev
+test-*.js
 
 # Lock files (uncomment based on package manager)
 # yarn.lock
