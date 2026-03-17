@@ -82,41 +82,6 @@ export function getBashToolBlockedCommands(commands: PlatformBlockedCommands): s
   return getCurrentPlatformBlockedCommands(commands);
 }
 
-/**
- * Platform-specific Claude CLI paths.
- * @deprecated Use HostnameCliPaths instead. Kept for migration from older versions.
- */
-export interface PlatformCliPaths {
-  macos: string;
-  linux: string;
-  windows: string;
-}
-
-/** Platform key for CLI paths. Used for migration only. */
-export type CliPlatformKey = keyof PlatformCliPaths;
-
-/**
- * Map process.platform to CLI platform key.
- * @deprecated Used for migration only.
- */
-export function getCliPlatformKey(): CliPlatformKey {
-  switch (process.platform) {
-    case 'darwin':
-      return 'macos';
-    case 'win32':
-      return 'windows';
-    default:
-      return 'linux';
-  }
-}
-
-/**
- * Hostname-keyed CLI paths for per-device configuration.
- * Each device stores its path using its hostname as key.
- * This allows settings to sync across devices without conflicts.
- */
-export type HostnameCliPaths = Record<string, string>;
-
 /** Permission mode for tool execution. */
 export type PermissionMode = 'yolo' | 'plan' | 'normal';
 
@@ -183,8 +148,6 @@ export interface CCSettings {
   enableAllProjectMcpServers?: boolean;
   enabledMcpjsonServers?: string[];
   disabledMcpjsonServers?: string[];
-  /** Plugin enabled state (CC format: { "plugin-id": true/false }) */
-  enabledPlugins?: Record<string, boolean>;
   /** Allow additional properties for CC compatibility */
   [key: string]: unknown;
 }
@@ -199,7 +162,7 @@ export interface EnvSnippet {
 }
 
 /** Source of a slash command. */
-export type SlashCommandSource = 'builtin' | 'user' | 'plugin' | 'sdk';
+export type SlashCommandSource = 'builtin' | 'user' | 'sdk';
 
 /** Slash command configuration with Claude Code compatibility. */
 export interface SlashCommand {

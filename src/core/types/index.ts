@@ -39,18 +39,15 @@ export {
   type CCPermissions,
   type CCSettings,
   type EleSettings,
-  type CliPlatformKey,
   createPermissionRule,
   DEFAULT_CC_PERMISSIONS,
   DEFAULT_CC_SETTINGS,
   DEFAULT_SETTINGS,
   type EnvSnippet,
   getBashToolBlockedCommands,
-  getCliPlatformKey,  // Kept for migration
   getCurrentPlatformBlockedCommands,
   getCurrentPlatformKey,
   getDefaultBlockedCommands,
-  type HostnameCliPaths,
   type InstructionRefineResult,
   type KeyboardNavigationSettings,
   type LegacyPermission,
@@ -60,7 +57,6 @@ export {
   type PermissionMode,
   type PermissionRule,
   type PlatformBlockedCommands,
-  type PlatformCliPaths,  // Kept for migration
   type SlashCommand,
   type TabBarPosition,
 } from './settings';
