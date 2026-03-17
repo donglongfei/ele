@@ -211,24 +211,92 @@ export class MessageRenderer {
    * Renders assistant message content (content blocks or fallback).
    */
   private renderAssistantContent(msg: ChatMessage, contentEl: HTMLElement): void {
+    // Check if reasoning is enabled
+    const reasoningEnabled = this.plugin.settings.reasoningEnabled ?? false;
+    
     if (msg.contentBlocks && msg.contentBlocks.length > 0) {
       const renderedToolIds = new Set<string>();
       for (const block of msg.contentBlocks) {
         if (block.type === 'thinking') {
-          renderStoredThinkingBlock(
-            contentEl,
-            block.content,
-            block.durationSeconds,
-            (el, md) => this.renderContent(el, md)
-          );
+          // Only render thinking block if reasoning is enabled
+          if (reasoningEnabled) {
+            renderStoredThinkingBlock(
+              contentEl,
+              block.content,
+              block.durationSeconds,
+              (el, md) => this.renderContent(el, md)
+            );
+          }
         } else if (block.type === 'text') {
           // Skip empty or whitespace-only text blocks to avoid extra gaps
           if (!block.content || !block.content.trim()) {
             continue;
           }
-          const textEl = contentEl.createDiv({ cls: 'claudian-text-block' });
-          void this.renderContent(textEl, block.content);
-          this.addTextCopyButton(textEl, block.content);
+          
+          // Check for <thinking> tags in text content (various formats)
+          const text = block.content;
+
+          if (!reasoningEnabled) {
+            // When reasoning is disabled, strip <thinking> tags and render remaining text
+            const textWithoutThinking = text.replace(/<thinking(?:\s[^>]*)?>([\s\S]*?)<\/thinking>/g, '');
+            if (textWithoutThinking.trim()) {
+              const textEl = contentEl.createDiv({ cls: 'claudian-text-block' });
+              void this.renderContent(textEl, textWithoutThinking);
+              this.addTextCopyButton(textEl, textWithoutThinking);
+            }
+            continue;
+          }
+
+          // Reasoning is enabled - parse and render thinking blocks
+          // Match: <thinking> or <thinking ...> with closing </thinking>
+          const thinkingRegex = /<thinking(?:\s[^>]*)?>([\s\S]*?)<\/thinking>/g;
+          let lastIndex = 0;
+          let match;
+          let hasThinkingContent = false;
+
+          while ((match = thinkingRegex.exec(text)) !== null) {
+            hasThinkingContent = true;
+            const beforeThinking = text.substring(lastIndex, match.index);
+            let thinkingContent = match[1];
+
+            // Remove any attributes at the start (if format is <thinking attribute>content)
+            const attrMatch = thinkingContent.match(/^[^>]*>([\s\S]*)$/);
+            if (attrMatch) {
+              thinkingContent = attrMatch[1];
+            }
+
+            // Render text before thinking
+            if (beforeThinking.trim()) {
+              const textEl = contentEl.createDiv({ cls: 'claudian-text-block' });
+              void this.renderContent(textEl, beforeThinking);
+              this.addTextCopyButton(textEl, beforeThinking);
+            }
+
+            // Render thinking block
+            if (thinkingContent.trim()) {
+              renderStoredThinkingBlock(
+                contentEl,
+                thinkingContent,
+                undefined,
+                (el, md) => this.renderContent(el, md)
+              );
+            }
+
+            lastIndex = thinkingRegex.lastIndex;
+          }
+
+          // Render remaining text after last thinking block
+          const afterThinking = text.substring(lastIndex);
+          if (afterThinking.trim()) {
+            const textEl = contentEl.createDiv({ cls: 'claudian-text-block' });
+            void this.renderContent(textEl, afterThinking);
+            this.addTextCopyButton(textEl, afterThinking);
+          } else if (!hasThinkingContent) {
+            // No thinking blocks found, render entire text
+            const textEl = contentEl.createDiv({ cls: 'claudian-text-block' });
+            void this.renderContent(textEl, text);
+            this.addTextCopyButton(textEl, text);
+          }
         } else if (block.type === 'tool_use') {
           const toolCall = msg.toolCalls?.find(tc => tc.id === block.toolId);
           if (toolCall) {
@@ -260,9 +328,69 @@ export class MessageRenderer {
     } else {
       // Fallback for old conversations without contentBlocks
       if (msg.content) {
-        const textEl = contentEl.createDiv({ cls: 'claudian-text-block' });
-        void this.renderContent(textEl, msg.content);
-        this.addTextCopyButton(textEl, msg.content);
+        // Check for <thinking> tags in content (various formats)
+        const text = msg.content;
+
+        if (!reasoningEnabled) {
+          // When reasoning is disabled, strip <thinking> tags and render remaining text
+          const textWithoutThinking = text.replace(/<thinking(?:\s[^>]*)?>([\s\S]*?)<\/thinking>/g, '');
+          if (textWithoutThinking.trim()) {
+            const textEl = contentEl.createDiv({ cls: 'claudian-text-block' });
+            void this.renderContent(textEl, textWithoutThinking);
+            this.addTextCopyButton(textEl, textWithoutThinking);
+          }
+        } else {
+          // Reasoning is enabled - parse and render thinking blocks
+          // Match: <thinking> or <thinking ...> with closing </thinking>
+          const thinkingRegex = /<thinking(?:\s[^>]*)?>([\s\S]*?)<\/thinking>/g;
+          let lastIndex = 0;
+          let match;
+          let hasThinkingContent = false;
+
+          while ((match = thinkingRegex.exec(text)) !== null) {
+            hasThinkingContent = true;
+            const beforeThinking = text.substring(lastIndex, match.index);
+            let thinkingContent = match[1];
+
+            // Remove any attributes at the start (if format is <thinking attribute>content)
+            const attrMatch = thinkingContent.match(/^[^>]*>([\s\S]*)$/);
+            if (attrMatch) {
+              thinkingContent = attrMatch[1];
+            }
+
+            // Render text before thinking
+            if (beforeThinking.trim()) {
+              const textEl = contentEl.createDiv({ cls: 'claudian-text-block' });
+              void this.renderContent(textEl, beforeThinking);
+              this.addTextCopyButton(textEl, beforeThinking);
+            }
+
+            // Render thinking block
+            if (thinkingContent.trim()) {
+              renderStoredThinkingBlock(
+                contentEl,
+                thinkingContent,
+                undefined,
+                (el, md) => this.renderContent(el, md)
+              );
+            }
+
+            lastIndex = thinkingRegex.lastIndex;
+          }
+
+          // Render remaining text after last thinking block
+          const afterThinking = text.substring(lastIndex);
+          if (afterThinking.trim()) {
+            const textEl = contentEl.createDiv({ cls: 'claudian-text-block' });
+            void this.renderContent(textEl, afterThinking);
+            this.addTextCopyButton(textEl, afterThinking);
+          } else if (!hasThinkingContent) {
+            // No thinking blocks found, render entire text
+            const textEl = contentEl.createDiv({ cls: 'claudian-text-block' });
+            void this.renderContent(textEl, text);
+            this.addTextCopyButton(textEl, text);
+          }
+        }
       }
       if (msg.toolCalls) {
         for (const toolCall of msg.toolCalls) {

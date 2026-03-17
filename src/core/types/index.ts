@@ -10,21 +10,23 @@ export {
   type SessionMetadata,
   type StreamChunk,
   type UsageInfo,
-  VIEW_TYPE_CLAUDIAN,
+  VIEW_TYPE_OPENCODIAN,
+  VIEW_TYPE_CLAUDIAN,  // Legacy alias
 } from './chat';
 
 // Model types
 export {
-  BETA_1M_CONTEXT,
   type ClaudeModel,
-  CONTEXT_WINDOW_1M,
+  type KimiModel,
   CONTEXT_WINDOW_STANDARD,
-  DEFAULT_CLAUDE_MODELS,
+  CONTEXT_WINDOW_KIMI_K2_5,
+  DEFAULT_KIMI_MODELS,
+  DEFAULT_CLAUDE_MODELS,  // Legacy alias
   DEFAULT_THINKING_BUDGET,
   getContextWindowSize,
-  type ModelWithBetas,
-  type ModelWithoutBetas,
-  resolveModelWithBetas,
+  type ModelConfig,
+  resolveModelConfig,
+  resolveModelWithBetas,  // Legacy compatibility
   THINKING_BUDGETS,
   type ThinkingBudget,
 } from './models';

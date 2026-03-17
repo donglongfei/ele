@@ -1,20 +1,22 @@
 /**
- * McpStorage - Handles .claude/mcp.json read/write
+ * McpStorage - Handles .opencode/mcp.json read/write
  *
- * MCP server configurations are stored in Claude Code-compatible format
- * with optional Claudian-specific metadata in _claudian field.
+ * MCP server configurations are stored in OpenClaw-compatible format
+ * with optional OpenCodian-specific metadata in _opencodian field.
  *
  * File format:
  * {
  *   "mcpServers": {
  *     "server-name": { "command": "...", "args": [...] }
  *   },
- *   "_claudian": {
+ *   "_opencodian": {
  *     "servers": {
  *       "server-name": { "enabled": true, "contextSaving": true, "disabledTools": ["tool"], "description": "..." }
  *     }
  *   }
  * }
+ *
+ * Also accepts legacy _claudian field for migration.
  */
 
 import type {
@@ -27,25 +29,42 @@ import { DEFAULT_MCP_SERVER, isValidMcpServerConfig } from '../types';
 import type { VaultFileAdapter } from './VaultFileAdapter';
 
 /** Path to MCP config file relative to vault root. */
-export const MCP_CONFIG_PATH = '.claude/mcp.json';
+export const MCP_CONFIG_PATH = '.opencode/mcp.json';
+
+/** Legacy path for migration. */
+export const LEGACY_MCP_CONFIG_PATH = '.claude/mcp.json';
 
 export class McpStorage {
   constructor(private adapter: VaultFileAdapter) {}
 
   async load(): Promise<ClaudianMcpServer[]> {
+    let path = MCP_CONFIG_PATH;
+    let shouldMigrate = false;
+
     try {
+      // Try new path first
       if (!(await this.adapter.exists(MCP_CONFIG_PATH))) {
-        return [];
+        // Check legacy path
+        if (await this.adapter.exists(LEGACY_MCP_CONFIG_PATH)) {
+          path = LEGACY_MCP_CONFIG_PATH;
+          shouldMigrate = true;
+        } else {
+          return [];
+        }
       }
 
-      const content = await this.adapter.read(MCP_CONFIG_PATH);
+      const content = await this.adapter.read(path);
       const file = JSON.parse(content) as ClaudianMcpConfigFile;
 
       if (!file.mcpServers || typeof file.mcpServers !== 'object') {
         return [];
       }
 
+      // Check both _opencodian and _claudian (legacy) metadata
+      const opencodianMeta = file._opencodian?.servers ?? {};
       const claudianMeta = file._claudian?.servers ?? {};
+      const metadataSource = Object.keys(opencodianMeta).length > 0 ? opencodianMeta : claudianMeta;
+
       const servers: ClaudianMcpServer[] = [];
 
       for (const [name, config] of Object.entries(file.mcpServers)) {
@@ -53,7 +72,7 @@ export class McpStorage {
           continue;
         }
 
-        const meta = claudianMeta[name] ?? {};
+        const meta = metadataSource[name] ?? {};
         const disabledTools = Array.isArray(meta.disabledTools)
           ? meta.disabledTools.filter((tool) => typeof tool === 'string')
           : undefined;
@@ -70,6 +89,11 @@ export class McpStorage {
         });
       }
 
+      // Auto-migrate to new path if loaded from legacy
+      if (shouldMigrate && servers.length > 0) {
+        await this.save(servers);
+      }
+
       return servers;
     } catch {
       return [];
@@ -78,7 +102,7 @@ export class McpStorage {
 
   async save(servers: ClaudianMcpServer[]): Promise<void> {
     const mcpServers: Record<string, McpServerConfig> = {};
-    const claudianServers: Record<
+    const opencodianServers: Record<
       string,
       { enabled?: boolean; contextSaving?: boolean; disabledTools?: string[]; description?: string }
     > = {};
@@ -86,7 +110,7 @@ export class McpStorage {
     for (const server of servers) {
       mcpServers[server.name] = server.config;
 
-      // Only store Claudian metadata if different from defaults
+      // Only store OpenCodian metadata if different from defaults
       const meta: {
         enabled?: boolean;
         contextSaving?: boolean;
@@ -111,50 +135,26 @@ export class McpStorage {
       }
 
       if (Object.keys(meta).length > 0) {
-        claudianServers[server.name] = meta;
+        opencodianServers[server.name] = meta;
       }
     }
 
-    let existing: Record<string, unknown> | null = null;
-    if (await this.adapter.exists(MCP_CONFIG_PATH)) {
-      try {
-        const raw = await this.adapter.read(MCP_CONFIG_PATH);
-        const parsed = JSON.parse(raw);
-        if (parsed && typeof parsed === 'object') {
-          existing = parsed as Record<string, unknown>;
-        }
-      } catch {
-        existing = null;
-      }
-    }
-
-    const file: Record<string, unknown> = existing ? { ...existing } : {};
-    file.mcpServers = mcpServers;
-
-    const existingClaudian =
-      existing && typeof existing._claudian === 'object'
-        ? (existing._claudian as Record<string, unknown>)
-        : null;
-
-    if (Object.keys(claudianServers).length > 0) {
-      file._claudian = { ...(existingClaudian ?? {}), servers: claudianServers };
-    } else if (existingClaudian) {
-      const { servers: _servers, ...rest } = existingClaudian;
-      if (Object.keys(rest).length > 0) {
-        file._claudian = rest;
-      } else {
-        delete file._claudian;
-      }
-    } else {
-      delete file._claudian;
-    }
+    const file: ClaudianMcpConfigFile = {
+      mcpServers,
+      _opencodian: Object.keys(opencodianServers).length > 0
+        ? { servers: opencodianServers }
+        : undefined,
+    };
 
     const content = JSON.stringify(file, null, 2);
     await this.adapter.write(MCP_CONFIG_PATH, content);
   }
 
   async exists(): Promise<boolean> {
-    return this.adapter.exists(MCP_CONFIG_PATH);
+    return (
+      (await this.adapter.exists(MCP_CONFIG_PATH)) ||
+      (await this.adapter.exists(LEGACY_MCP_CONFIG_PATH))
+    );
   }
 
   /**

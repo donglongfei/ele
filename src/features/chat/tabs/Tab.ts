@@ -4,7 +4,7 @@ import { Notice } from 'obsidian';
 import { ClaudianService } from '../../../core/agent';
 import type { McpServerManager } from '../../../core/mcp';
 import type { ChatMessage, ClaudeModel, Conversation, PermissionMode, SlashCommand, ThinkingBudget } from '../../../core/types';
-import { DEFAULT_CLAUDE_MODELS, DEFAULT_THINKING_BUDGET, getContextWindowSize } from '../../../core/types';
+import { DEFAULT_CLAUDE_MODELS, DEFAULT_THINKING_BUDGET, getContextWindowSize, THINKING_BUDGETS } from '../../../core/types';
 import { t } from '../../../i18n';
 import type ClaudianPlugin from '../../../main';
 import { SlashCommandDropdown } from '../../../shared/components/SlashCommandDropdown';
@@ -285,6 +285,41 @@ export async function initializeTabService(
     // Only set tab state after successful initialization
     tab.service = service;
     tab.serviceInitialized = true;
+    
+    // Restore pending session if exists (from createNew before service was ready)
+    console.log('[initializeTabService] pendingChannelKey:', tab.state.pendingChannelKey);
+    if (tab.state.pendingChannelKey) {
+      const existingSession = service.sessionManager.getSession(tab.state.pendingChannelKey);
+      console.log('[initializeTabService] existingSession:', existingSession);
+      if (!existingSession) {
+        service.sessionManager.createSession(tab.state.pendingChannelKey, '新对话');
+        console.log('[initializeTabService] Created session from pendingChannelKey');
+      }
+      service.sessionManager.setActiveSession(tab.state.pendingChannelKey);
+      console.log('[initializeTabService] Set active session to:', tab.state.pendingChannelKey);
+      
+      // Sync reasoning and thinking level settings to OpenClaw Gateway
+      // This ensures the session uses the current plugin settings
+      try {
+        const session = service.sessionManager.getActiveSession();
+        if (session) {
+          // Sync reasoning setting
+          const reasoningEnabled = plugin.settings.reasoningEnabled ?? false;
+          await service.setReasoning(reasoningEnabled, session.channelKey);
+          console.log('[initializeTabService] Synced reasoning setting:', reasoningEnabled);
+          
+          // Sync thinking level setting
+          const thinkingLevel = plugin.settings.thinkingBudget ?? 'medium';
+          await service.setThinkingLevel(thinkingLevel, session.channelKey);
+          console.log('[initializeTabService] Synced thinking level:', thinkingLevel);
+        }
+      } catch (syncError) {
+        // Non-fatal: settings sync failure shouldn't block initialization
+        console.warn('[initializeTabService] Failed to sync settings to OpenClaw:', syncError);
+      }
+    } else {
+      console.log('[initializeTabService] No pendingChannelKey to restore');
+    }
   } catch (error) {
     // Clean up partial state on failure
     unsubscribeReadyState?.();
@@ -447,6 +482,22 @@ function initializeInputToolbar(tab: TabData, plugin: ClaudianPlugin): void {
       tab.ui.modelSelector?.updateDisplay();
       tab.ui.modelSelector?.renderOptions();
 
+      // Sync model change to OpenClaw Gateway
+      try {
+        if (!tab.service) {
+          await initializeTabService(tab, plugin, plugin.mcpManager);
+        }
+        
+        if (!tab.service) {
+          console.error('[Tab] tab.service is null for model change');
+          return;
+        }
+        
+        await tab.service.setModel(model);
+      } catch (error) {
+        console.error('[Tab] Failed to sync model to OpenClaw:', error);
+      }
+
       // Recalculate context usage percentage for the new model's context window
       const currentUsage = tab.state.usage;
       if (currentUsage) {
@@ -461,13 +512,80 @@ function initializeInputToolbar(tab: TabData, plugin: ClaudianPlugin): void {
       }
     },
     onThinkingBudgetChange: async (budget: ThinkingBudget) => {
+      console.log('[Tab] onThinkingBudgetChange called with:', budget);
+      console.log('[Tab] tab.service:', !!tab.service);
+      console.log('[Tab] tab.state.pendingChannelKey:', tab.state.pendingChannelKey);
+      console.log('[Tab] tab.state.currentConversationId:', tab.state.currentConversationId);
+      
       plugin.settings.thinkingBudget = budget;
       await plugin.saveSettings();
+
+      // Sync thinking level to OpenClaw Gateway
+      try {
+        // Ensure service is initialized
+        if (!tab.service) {
+          console.log('[Tab] tab.service is null, initializing...');
+          await initializeTabService(tab, plugin, plugin.mcpManager);
+        }
+        
+        if (!tab.service) {
+          console.error('[Tab] tab.service still null after init attempt');
+          return;
+        }
+        
+        console.log('[Tab] After init - Sessions count:', tab.service.sessionManager.listSessions().length);
+        
+        // Get or create session
+        let session = tab.service.sessionManager.getActiveSession();
+        
+        // If no active session, try to get or create based on currentConversationId
+        if (!session && tab.state.currentConversationId) {
+          const channelKey = `agent:main:obsidian-${tab.state.currentConversationId}`;
+          console.log('[Tab] No active session, trying channelKey:', channelKey);
+          
+          session = tab.service.sessionManager.getSession(channelKey);
+          if (!session) {
+            console.log('[Tab] Creating new session for existing conversation');
+            session = tab.service.sessionManager.createSession(channelKey, '对话');
+          }
+          tab.service.sessionManager.setActiveSession(channelKey);
+        }
+        
+        if (!session) {
+          console.error('[Tab] No active session and cannot create one');
+          console.error('[Tab] All sessions:', tab.service.sessionManager.listSessions().map(s => s.channelKey));
+          return;
+        }
+        
+        console.log('[Tab] Using session channelKey:', session.channelKey);
+        
+        await tab.service.setThinkingLevel(budget, session.channelKey);
+        console.log('[Tab] setThinkingLevel called successfully');
+      } catch (error) {
+        console.error('[Tab] Failed to sync thinking level to OpenClaw:', error);
+      }
     },
     onPermissionModeChange: async (mode) => {
       plugin.settings.permissionMode = mode;
       await plugin.saveSettings();
       dom.inputWrapper.toggleClass('claudian-input-plan-mode', mode === 'plan');
+
+      // Sync permission mode to OpenClaw Gateway
+      try {
+        // Ensure service is initialized
+        if (!tab.service) {
+          await initializeTabService(tab, plugin, plugin.mcpManager);
+        }
+        
+        if (!tab.service) {
+          console.error('[Tab] tab.service is null for permission mode change');
+          return;
+        }
+        
+        await tab.service.setPermissionMode(mode);
+      } catch (error) {
+        console.error('[Tab] Failed to sync permission mode to OpenClaw:', error);
+      }
     },
   });
 

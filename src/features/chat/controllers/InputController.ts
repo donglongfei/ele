@@ -369,7 +369,18 @@ export class InputController {
       // Pass history WITHOUT current turn (userMsg + assistantMsg we just added)
       // This prevents duplication when rebuilding context for new sessions
       const previousMessages = state.messages.slice(0, -2);
-      for await (const chunk of agentService.query(promptToSend, imagesForMessage, previousMessages, queryOptions)) {
+      
+      // Include channelKey for session routing (multi-session isolation)
+      // Use pendingChannelKey for new conversations, current conversation's channelKey for existing
+      const channelKey = state.pendingChannelKey || 
+        (state.currentConversationId ? `agent:main:obsidian-${state.currentConversationId}` : undefined);
+      
+      const queryOptionsWithConversation = {
+        ...queryOptions,
+        conversationId: channelKey, // Pass channelKey as conversationId for routing
+      };
+      
+      for await (const chunk of agentService.query(promptToSend, imagesForMessage, previousMessages, queryOptionsWithConversation)) {
         if (chunk.type === 'sdk_user_uuid') {
           userMsg.sdkUserUuid = chunk.uuid;
           continue;

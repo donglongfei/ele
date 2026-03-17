@@ -1,15 +1,15 @@
 /**
- * CCSettingsStorage - Handles CC-compatible settings.json read/write.
+ * CCSettingsStorage - Handles OpenClaw-compatible settings.json read/write.
  *
- * Manages the .claude/settings.json file in Claude Code compatible format.
- * This file is shared with Claude Code CLI for interoperability.
+ * Manages the .opencode/settings.json file in OpenClaw compatible format.
+ * This file is compatible with OpenClaw Gateway configuration.
  *
- * Only CC-compatible fields are stored here:
+ * Only OpenClaw-compatible fields are stored here:
  * - permissions (allow/deny/ask)
  * - model (optional override)
  * - env (optional environment variables)
  *
- * Claudian-specific settings go in claudian-settings.json.
+ * OpenCodian-specific settings go in opencodian-settings.json.
  */
 
 import type {
@@ -26,10 +26,13 @@ import {
 import { CLAUDIAN_ONLY_FIELDS } from './migrationConstants';
 import type { VaultFileAdapter } from './VaultFileAdapter';
 
-/** Path to CC settings file relative to vault root. */
-export const CC_SETTINGS_PATH = '.claude/settings.json';
+/** Path to OpenClaw settings file relative to vault root. */
+export const CC_SETTINGS_PATH = '.opencode/settings.json';
 
-/** Schema URL for CC settings. */
+/** Legacy path for migration support. */
+export const LEGACY_CC_SETTINGS_PATH = '.claude/settings.json';
+
+/** Schema URL for OpenClaw settings (compatible with Claude Code format). */
 const CC_SETTINGS_SCHEMA = 'https://json.schemastore.org/claude-code-settings.json';
 
 function hasClaudianOnlyFields(data: Record<string, unknown>): boolean {
@@ -95,11 +98,21 @@ export class CCSettingsStorage {
    * Throws if file exists but cannot be read or parsed.
    */
   async load(): Promise<CCSettings> {
+    // Try new path first
+    let path = CC_SETTINGS_PATH;
+    let shouldMigrate = false;
+
     if (!(await this.adapter.exists(CC_SETTINGS_PATH))) {
-      return { ...DEFAULT_CC_SETTINGS };
+      // Check legacy path
+      if (await this.adapter.exists(LEGACY_CC_SETTINGS_PATH)) {
+        path = LEGACY_CC_SETTINGS_PATH;
+        shouldMigrate = true;
+      } else {
+        return { ...DEFAULT_CC_SETTINGS };
+      }
     }
 
-    const content = await this.adapter.read(CC_SETTINGS_PATH);
+    const content = await this.adapter.read(path);
     const stored = JSON.parse(content) as Record<string, unknown>;
 
     // Check for legacy format and migrate if needed
@@ -108,28 +121,42 @@ export class CCSettingsStorage {
       const ccPerms = legacyPermissionsToCCPermissions(legacyPerms);
 
       // Return migrated permissions but keep other CC fields
-      return {
+      const migrated = {
         $schema: CC_SETTINGS_SCHEMA,
         ...stored,
         permissions: ccPerms,
       };
+
+      // Auto-migrate to new path if loading from legacy
+      if (shouldMigrate) {
+        await this.save(migrated, true);
+      }
+
+      return migrated;
     }
 
-    return {
+    const result = {
       $schema: CC_SETTINGS_SCHEMA,
       ...stored,
       permissions: normalizePermissions(stored.permissions),
     };
+
+    // Auto-migrate to new path if loading from legacy
+    if (shouldMigrate) {
+      await this.save(result);
+    }
+
+    return result;
   }
 
   /**
-   * Save CC settings to .claude/settings.json.
-   * Preserves unknown fields for CC compatibility.
+   * Save OpenClaw settings to .opencode/settings.json.
+   * Preserves unknown fields for compatibility.
    *
    * @param stripClaudianFields - If true, remove Claudian-only fields (only during migration)
    */
   async save(settings: CCSettings, stripClaudianFields: boolean = false): Promise<void> {
-    // Load existing to preserve CC-specific fields we don't manage
+    // Load existing to preserve fields we don't manage
     let existing: Record<string, unknown> = {};
     if (await this.adapter.exists(CC_SETTINGS_PATH)) {
       try {
@@ -156,7 +183,7 @@ export class CCSettingsStorage {
       }
     }
 
-    // Merge: existing CC fields + our updates
+    // Merge: existing fields + our updates
     const merged: CCSettings = {
       ...existing,
       $schema: CC_SETTINGS_SCHEMA,
@@ -172,7 +199,10 @@ export class CCSettingsStorage {
   }
 
   async exists(): Promise<boolean> {
-    return this.adapter.exists(CC_SETTINGS_PATH);
+    return (
+      (await this.adapter.exists(CC_SETTINGS_PATH)) ||
+      (await this.adapter.exists(LEGACY_CC_SETTINGS_PATH))
+    );
   }
 
   async getPermissions(): Promise<CCPermissions> {

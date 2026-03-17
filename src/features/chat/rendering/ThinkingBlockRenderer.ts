@@ -23,17 +23,21 @@ export function createThinkingBlock(
   header.setAttribute('tabindex', '0');
   header.setAttribute('role', 'button');
   header.setAttribute('aria-expanded', 'false');
-  header.setAttribute('aria-label', 'Extended thinking - click to expand');
+  header.setAttribute('aria-label', '思考过程 - 点击展开');
 
-  // Label with timer
+  // Collapse/expand arrow icon - starts pointing right (collapsed)
+  const arrowEl = header.createSpan({ cls: 'claudian-thinking-arrow' });
+  arrowEl.innerHTML = '▶'; // Right arrow (collapsed state)
+
+  // Label with timer - show <思考中> with elapsed time
   const labelEl = header.createSpan({ cls: 'claudian-thinking-label' });
   const startTime = Date.now();
-  labelEl.setText('Thinking 0s...');
+  labelEl.setText('思考中 0s...');
 
   // Start timer interval to update label every second
   const timerInterval = setInterval(() => {
     const elapsed = Math.floor((Date.now() - startTime) / 1000);
-    labelEl.setText(`Thinking ${elapsed}s...`);
+    labelEl.setText(`思考中 ${elapsed}s...`);
   }, 1000);
 
   // Collapsible content (collapsed by default)
@@ -75,8 +79,8 @@ export function finalizeThinkingBlock(state: ThinkingBlockState): number {
   // Calculate final duration
   const durationSeconds = Math.floor((Date.now() - state.startTime) / 1000);
 
-  // Update label to show final duration (without "...")
-  state.labelEl.setText(`Thought for ${durationSeconds}s`);
+  // Update label to show <思考过程> with duration
+  state.labelEl.setText(`思考过程 ${durationSeconds}s`);
 
   // Collapse when done and sync state
   const header = state.wrapperEl.querySelector('.claudian-thinking-header');
@@ -105,15 +109,19 @@ export function renderStoredThinkingBlock(
   const header = wrapperEl.createDiv({ cls: 'claudian-thinking-header' });
   header.setAttribute('tabindex', '0');
   header.setAttribute('role', 'button');
-  header.setAttribute('aria-label', 'Extended thinking - click to expand');
+  header.setAttribute('aria-label', '思考过程 - 点击展开');
 
-  // Label with duration
+  // Collapse/expand arrow icon - starts pointing right (collapsed)
+  const arrowEl = header.createSpan({ cls: 'claudian-thinking-arrow' });
+  arrowEl.innerHTML = '▶'; // Right arrow (collapsed state)
+
+  // Label with duration - show <思考过程>
   const labelEl = header.createSpan({ cls: 'claudian-thinking-label' });
-  const labelText = durationSeconds !== undefined ? `Thought for ${durationSeconds}s` : 'Thought';
+  const labelText = durationSeconds !== undefined ? `思考过程 ${durationSeconds}s` : '思考过程';
   labelEl.setText(labelText);
 
-  // Collapsible content
-  const contentEl = wrapperEl.createDiv({ cls: 'claudian-thinking-content' });
+  // Collapsible content with gray styling
+  const contentEl = wrapperEl.createDiv({ cls: 'claudian-thinking-content claudian-thinking-content-gray' });
   renderContent(contentEl, content);
 
   // Setup collapsible behavior (handles click, keyboard, ARIA, CSS)

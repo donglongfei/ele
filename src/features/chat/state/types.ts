@@ -100,6 +100,10 @@ export interface ChatStateData {
   // Pending plan content for approve-new-session (auto-sends in new session after stream ends)
   pendingNewSessionPlan: string | null;
 
+  // OpenClaw session channelKey for the current conversation entry point
+  // Format: agent:main:obsidian-{randomId}, used before conversation is created
+  pendingChannelKey: string | null;
+
   // Plan file path captured from Write tool calls to ~/.claude/plans/ during plan mode
   planFilePath: string | null;
 

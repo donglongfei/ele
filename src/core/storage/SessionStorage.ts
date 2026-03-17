@@ -1,5 +1,5 @@
 /**
- * SessionStorage - Handles chat session files in vault/.claude/sessions/
+ * SessionStorage - Handles chat session files in vault/.opencode/sessions/
  *
  * Each conversation is stored as a JSONL (JSON Lines) file.
  * First line contains metadata, subsequent lines contain messages.
@@ -24,7 +24,10 @@ import type {
 import type { VaultFileAdapter } from './VaultFileAdapter';
 
 /** Path to sessions folder relative to vault root. */
-export const SESSIONS_PATH = '.claude/sessions';
+export const SESSIONS_PATH = '.opencode/sessions';
+
+/** Legacy path for migration. */
+export const LEGACY_SESSIONS_PATH = '.claude/sessions';
 
 /** Metadata record stored as first line of JSONL. */
 interface SessionMetaRecord {
@@ -53,15 +56,31 @@ export class SessionStorage {
   constructor(private adapter: VaultFileAdapter) { }
 
   async loadConversation(id: string): Promise<Conversation | null> {
-    const filePath = this.getFilePath(id);
+    let filePath = this.getFilePath(id);
+    let shouldMigrate = false;
 
     try {
+      // Try new path first
       if (!(await this.adapter.exists(filePath))) {
-        return null;
+        // Check legacy path
+        const legacyPath = this.getLegacyFilePath(id);
+        if (await this.adapter.exists(legacyPath)) {
+          filePath = legacyPath;
+          shouldMigrate = true;
+        } else {
+          return null;
+        }
       }
 
       const content = await this.adapter.read(filePath);
-      return this.parseJSONL(content);
+      const conversation = this.parseJSONL(content);
+
+      // Auto-migrate to new path if loaded from legacy
+      if (conversation && shouldMigrate) {
+        await this.saveConversation(conversation);
+      }
+
+      return conversation;
     } catch {
       return null;
     }
@@ -75,34 +94,66 @@ export class SessionStorage {
 
   async deleteConversation(id: string): Promise<void> {
     const filePath = this.getFilePath(id);
-    await this.adapter.delete(filePath);
+    const legacyPath = this.getLegacyFilePath(id);
+
+    // Delete from both paths to ensure cleanup
+    try {
+      if (await this.adapter.exists(filePath)) {
+        await this.adapter.delete(filePath);
+      }
+    } catch {
+      // Ignore errors
+    }
+
+    try {
+      if (await this.adapter.exists(legacyPath)) {
+        await this.adapter.delete(legacyPath);
+      }
+    } catch {
+      // Ignore errors
+    }
   }
 
   /** List all conversation metadata (without loading full messages). */
   async listConversations(): Promise<ConversationMeta[]> {
     const metas: ConversationMeta[] = [];
+    const seenIds = new Set<string>();
 
-    try {
-      const files = await this.adapter.listFiles(SESSIONS_PATH);
-
-      for (const filePath of files) {
-        if (!filePath.endsWith('.jsonl')) continue;
-
-        try {
-          const meta = await this.loadMetaOnly(filePath);
-          if (meta) {
-            metas.push(meta);
-          }
-        } catch {
-          // Skip files that fail to load
+    // Helper to load from a path
+    const loadFromPath = async (basePath: string) => {
+      try {
+        if (!(await this.adapter.exists(basePath))) {
+          return;
         }
-      }
 
-      // Sort by updatedAt descending (most recent first)
-      metas.sort((a, b) => b.updatedAt - a.updatedAt);
-    } catch {
-      // Return empty list if directory listing fails
-    }
+        const files = await this.adapter.listFiles(basePath);
+
+        for (const filePath of files) {
+          if (!filePath.endsWith('.jsonl')) continue;
+
+          try {
+            const meta = await this.loadMetaOnly(filePath);
+            if (meta && !seenIds.has(meta.id)) {
+              metas.push(meta);
+              seenIds.add(meta.id);
+            }
+          } catch {
+            // Skip files that fail to load
+          }
+        }
+      } catch {
+        // Ignore directory listing failures
+      }
+    };
+
+    // Load from new path first
+    await loadFromPath(SESSIONS_PATH);
+
+    // Load from legacy path (skip duplicates)
+    await loadFromPath(LEGACY_SESSIONS_PATH);
+
+    // Sort by updatedAt descending (most recent first)
+    metas.sort((a, b) => b.updatedAt - a.updatedAt);
 
     return metas;
   }
@@ -145,6 +196,10 @@ export class SessionStorage {
 
   getFilePath(id: string): string {
     return `${SESSIONS_PATH}/${id}.jsonl`;
+  }
+
+  getLegacyFilePath(id: string): string {
+    return `${LEGACY_SESSIONS_PATH}/${id}.jsonl`;
   }
 
   private async loadMetaOnly(filePath: string): Promise<ConversationMeta | null> {

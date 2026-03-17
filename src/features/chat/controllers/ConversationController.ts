@@ -111,12 +111,25 @@ export class ConversationController {
       state.prePlanPermissionMode = null;
       state.autoScrollEnabled = plugin.settings.enableAutoScroll ?? true;
 
-      // Reset agent service session (no session ID for entry point)
-      // Pass persistent paths to prevent stale external contexts
-      this.getAgentService()?.setSessionId(
-        null,
-        plugin.settings.persistentExternalContextPaths || []
-      );
+      // Create a new OpenClaw session for the new conversation
+      // Each conversation has an isolated session using channelKey: agent:main:obsidian-{id}
+      const agentService = this.getAgentService();
+      
+      // Generate a unique channelKey for this conversation entry point
+      const channelKey = `agent:main:obsidian-${this.generateShortId()}`;
+      state.pendingChannelKey = channelKey;
+      
+      if (agentService) {
+        // Create session in sessionManager
+        agentService.sessionManager.createSession(channelKey, '新对话');
+        agentService.sessionManager.setActiveSession(channelKey);
+        
+        console.log('[ConversationController] Created new OpenClaw session:', channelKey);
+      } else {
+        // Service not initialized yet, session will be created when service is ready
+        // pendingChannelKey is already saved in state
+        console.log('[ConversationController] Service not ready, pendingChannelKey saved:', channelKey);
+      }
 
       const messagesEl = this.deps.getMessagesEl();
       messagesEl.empty();
@@ -739,11 +752,11 @@ export class ConversationController {
 
     // Day-specific greetings (some personalized, some universal)
     const dayGreetings: Record<number, string[]> = {
-      0: [personalize('Happy Sunday'), 'Sunday session?', 'Welcome to the weekend'],
+      0: [personalize('Happy Sunday'), 'Sunday session?', personalize('Welcome to the weekend')],
       1: [personalize('Happy Monday'), personalize('Back at it', 'Back at it!')],
-      2: [personalize('Happy Tuesday')],
-      3: [personalize('Happy Wednesday')],
-      4: [personalize('Happy Thursday')],
+      2: [personalize('Happy Tuesday'), 'Tuesday momentum building', 'Mid-week approaching — what shall we tackle?'],
+      3: [personalize('Happy Wednesday'), 'Hump day — let me know what you need'],
+      4: [personalize('Happy Thursday'), 'Almost Friday — what are we working on?'],
       5: [personalize('Happy Friday'), personalize('That Friday feeling')],
       6: [personalize('Happy Saturday', 'Happy Saturday!'), personalize('Welcome to the weekend')],
     };
@@ -751,13 +764,13 @@ export class ConversationController {
     // Time-specific greetings
     const getTimeGreetings = (): string[] => {
       if (hour >= 5 && hour < 12) {
-        return [personalize('Good morning'), 'Coffee and Claudian time?'];
+        return [personalize('Good morning'), 'Coffee and OpenClaw time?', personalize('A fresh morning to you')];
       } else if (hour >= 12 && hour < 18) {
-        return [personalize('Good afternoon'), personalize('Hey there'), personalize("How's it going") + '?'];
+        return [personalize('Good afternoon'), personalize('Hey there'), personalize("How's it going") + '?', 'Afternoon focus — what are we working on?'];
       } else if (hour >= 18 && hour < 22) {
         return [personalize('Good evening'), personalize('Evening'), personalize('How was your day') + '?'];
       } else {
-        return ['Hello, night owl', personalize('Evening')];
+        return ['Hello, night owl', personalize('Evening'), 'Late night session — burning the midnight oil?'];
       }
     };
 
@@ -770,6 +783,17 @@ export class ConversationController {
       personalize("What's new") + '?',
       ...(name ? [`${name} returns!`] : []),
       'You are absolutely right!',
+      'Ready when you are',
+      'What shall we explore today?',
+      personalize('Here to help'),
+      'What are we working on?',
+      personalize('Good to see you'),
+      'Ready to dive in — what do you need?',
+      'What can I assist with?',
+      name ? `Hello ${name}, what brings you here?` : 'Hello, what brings you here?',
+      'Looking forward to our conversation',
+      'What ideas are we developing today?',
+      'Ready to think through something together?',
     ];
 
     // Combine day + time + general greetings, pick randomly
@@ -876,6 +900,11 @@ export class ConversationController {
         this.updateHistoryDropdown();
       }
     );
+  }
+
+  /** Generates a short random ID for channelKey. */
+  private generateShortId(): string {
+    return Math.random().toString(36).substring(2, 10) + Date.now().toString(36).substring(2, 6);
   }
 
   /** Formats a timestamp for display. */

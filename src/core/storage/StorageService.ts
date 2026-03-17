@@ -2,16 +2,17 @@
  * StorageService - Main coordinator for distributed storage system.
  *
  * Manages:
- * - CC settings in .claude/settings.json (CC-compatible, shareable)
- * - Claudian settings in .claude/claudian-settings.json (Claudian-specific)
- * - Slash commands in .claude/commands/*.md
- * - Chat sessions in .claude/sessions/*.jsonl
- * - MCP configs in .claude/mcp.json
+ * - OpenClaw settings in .opencode/settings.json (OpenClaw-compatible, shareable)
+ * - OpenCodian settings in .opencode/opencodian-settings.json (OpenCodian-specific)
+ * - Slash commands in .opencode/commands/*.md
+ * - Chat sessions in .opencode/sessions/*.jsonl
+ * - MCP configs in .opencode/mcp.json
  *
  * Handles migration from legacy formats:
- * - Old settings.json with Claudian fields → split into CC + Claudian files
- * - Old permissions array → CC permissions object
- * - data.json state → claudian-settings.json
+ * - Old .claude/ → .opencode/
+ * - Old settings.json with Claudian fields → split into OpenClaw + OpenCodian files
+ * - Old permissions array → OpenClaw permissions object
+ * - data.json state → opencodian-settings.json
  */
 
 import type { App, Plugin } from 'obsidian';
@@ -34,10 +35,10 @@ import {
 import { AGENTS_PATH, AgentVaultStorage } from './AgentVaultStorage';
 import { CC_SETTINGS_PATH, CCSettingsStorage, isLegacyPermissionsFormat } from './CCSettingsStorage';
 import {
-  ClaudianSettingsStorage,
+  OpenCodianSettingsStorage,
   normalizeBlockedCommands,
-  type StoredClaudianSettings,
-} from './ClaudianSettingsStorage';
+  type StoredOpenCodianSettings,
+} from './OpenCodianSettingsStorage';
 import { McpStorage } from './McpStorage';
 import {
   CLAUDIAN_ONLY_FIELDS,
@@ -49,21 +50,26 @@ import { SKILLS_PATH, SkillStorage } from './SkillStorage';
 import { COMMANDS_PATH, SlashCommandStorage } from './SlashCommandStorage';
 import { VaultFileAdapter } from './VaultFileAdapter';
 
-/** Base path for all Claudian storage. */
+/** Base path for all OpenCodian storage. */
+export const OPENCODE_PATH = '.opencode';
+
+/** Legacy base path for migration. */
 export const CLAUDE_PATH = '.claude';
 
-/** Legacy settings path (now CC settings). */
+/** OpenClaw settings path (new name for CC settings). */
 export const SETTINGS_PATH = CC_SETTINGS_PATH;
 
 /**
  * Combined settings for the application.
- * Merges CC settings (permissions) with Claudian settings.
+ * Merges OpenClaw settings (permissions) with OpenCodian settings.
  */
 export interface CombinedSettings {
-  /** CC-compatible settings (permissions, etc.) */
+  /** OpenClaw-compatible settings (permissions, etc.) */
   cc: CCSettings;
-  /** Claudian-specific settings */
-  claudian: StoredClaudianSettings;
+  /** OpenCodian-specific settings */
+  claudian: StoredOpenCodianSettings;
+  /** Legacy alias for OpenCodian settings */
+  opencodian?: StoredOpenCodianSettings;
 }
 
 /** Legacy data format (pre-split migration). */
@@ -112,7 +118,8 @@ interface LegacyDataJson {
 
 export class StorageService {
   readonly ccSettings: CCSettingsStorage;
-  readonly claudianSettings: ClaudianSettingsStorage;
+  readonly claudianSettings: OpenCodianSettingsStorage;
+  readonly opencodianSettings: OpenCodianSettingsStorage;  // Alias for clarity
   readonly commands: SlashCommandStorage;
   readonly skills: SkillStorage;
   readonly sessions: SessionStorage;
@@ -128,7 +135,8 @@ export class StorageService {
     this.app = plugin.app;
     this.adapter = new VaultFileAdapter(this.app);
     this.ccSettings = new CCSettingsStorage(this.adapter);
-    this.claudianSettings = new ClaudianSettingsStorage(this.adapter);
+    this.claudianSettings = new OpenCodianSettingsStorage(this.adapter);
+    this.opencodianSettings = this.claudianSettings;  // Alias
     this.commands = new SlashCommandStorage(this.adapter);
     this.skills = new SkillStorage(this.adapter);
     this.sessions = new SessionStorage(this.adapter);
@@ -370,11 +378,17 @@ export class StorageService {
   }
 
   async ensureDirectories(): Promise<void> {
-    await this.adapter.ensureFolder(CLAUDE_PATH);
+    // Create new .opencode directory
+    await this.adapter.ensureFolder(OPENCODE_PATH);
     await this.adapter.ensureFolder(COMMANDS_PATH);
     await this.adapter.ensureFolder(SKILLS_PATH);
     await this.adapter.ensureFolder(SESSIONS_PATH);
     await this.adapter.ensureFolder(AGENTS_PATH);
+
+    // Legacy .claude directory for migration
+    if (await this.adapter.exists(CLAUDE_PATH)) {
+      // Keep old directory for migration purposes
+    }
   }
 
   async loadAllSlashCommands(): Promise<SlashCommand[]> {

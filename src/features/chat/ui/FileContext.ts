@@ -182,16 +182,27 @@ export class FileContextManager {
     const normalizedPath = this.normalizePathForVault(file.path);
     if (!normalizedPath) return;
 
-    if (!this.state.isSessionStarted()) {
-      this.state.clearAttachments();
-      if (!this.hasExcludedTag(file)) {
-        this.currentNotePath = normalizedPath;
-        this.state.attachFile(normalizedPath);
-      } else {
-        this.currentNotePath = null;
-      }
-      this.refreshCurrentNoteChip();
+    // Skip if the same file is already selected
+    if (this.currentNotePath === normalizedPath) {
+      return;
     }
+
+    // Always replace file context when a new file is opened
+    // Clear previous attachments and set the new file as current
+    this.state.clearAttachments();
+    this.state.clearCurrentNoteSent();
+
+    if (!this.hasExcludedTag(file)) {
+      this.currentNotePath = normalizedPath;
+      this.state.attachFile(normalizedPath);
+      // Show notice to inform user that context has switched
+      const filename = normalizedPath.split('/').pop() || normalizedPath;
+      new Notice(`Context switched to: ${filename}`);
+    } else {
+      this.currentNotePath = null;
+      new Notice('Current file has excluded tags — context cleared');
+    }
+    this.refreshCurrentNoteChip();
   }
 
   markFileCacheDirty() {

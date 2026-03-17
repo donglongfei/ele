@@ -20,7 +20,7 @@ const prod = process.argv[2] === 'production';
 // Obsidian plugin folder path (set via OBSIDIAN_VAULT env var or .env.local)
 const OBSIDIAN_VAULT = process.env.OBSIDIAN_VAULT;
 const OBSIDIAN_PLUGIN_PATH = OBSIDIAN_VAULT && existsSync(OBSIDIAN_VAULT)
-  ? path.join(OBSIDIAN_VAULT, '.obsidian', 'plugins', 'claudian')
+  ? path.join(OBSIDIAN_VAULT, '.obsidian', 'plugins', 'ele')
   : null;
 
 // Plugin to copy built files to Obsidian plugin folder
@@ -34,7 +34,7 @@ const copyToObsidian = {
         mkdirSync(OBSIDIAN_PLUGIN_PATH, { recursive: true });
       }
 
-      const files = ['main.js', 'manifest.json', 'styles.css'];
+      const files = ['main.js', 'manifest.json', 'styles.css', 'icon.png'];
       for (const file of files) {
         if (existsSync(file)) {
           copyFileSync(file, path.join(OBSIDIAN_PLUGIN_PATH, file));
@@ -63,6 +63,7 @@ const context = await esbuild.context({
     '@lezer/common',
     '@lezer/highlight',
     '@lezer/lr',
+    '@anthropic-ai/claude-agent-sdk',
     ...builtins,
     ...builtins.map(m => `node:${m}`),
   ],

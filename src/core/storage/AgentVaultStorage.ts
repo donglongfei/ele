@@ -3,57 +3,89 @@ import { buildAgentFromFrontmatter, parseAgentFile } from '../agents/AgentStorag
 import type { AgentDefinition } from '../types';
 import type { VaultFileAdapter } from './VaultFileAdapter';
 
-export const AGENTS_PATH = '.claude/agents';
+export const AGENTS_PATH = '.opencode/agents';
+export const LEGACY_AGENTS_PATH = '.claude/agents';
 
 export class AgentVaultStorage {
   constructor(private adapter: VaultFileAdapter) {}
 
   async loadAll(): Promise<AgentDefinition[]> {
     const agents: AgentDefinition[] = [];
+    const seenIds = new Set<string>();
 
-    try {
-      const files = await this.adapter.listFiles(AGENTS_PATH);
+    // Helper to load from a path
+    const loadFromPath = async (basePath: string) => {
+      try {
+        if (!(await this.adapter.exists(basePath))) {
+          return;
+        }
 
-      for (const filePath of files) {
-        if (!filePath.endsWith('.md')) continue;
+        const files = await this.adapter.listFiles(basePath);
 
-        try {
-          const content = await this.adapter.read(filePath);
-          const parsed = parseAgentFile(content);
-          if (!parsed) continue;
+        for (const filePath of files) {
+          if (!filePath.endsWith('.md')) continue;
 
-          const { frontmatter, body } = parsed;
+          try {
+            const content = await this.adapter.read(filePath);
+            const parsed = parseAgentFile(content);
+            if (!parsed) continue;
 
-          agents.push(buildAgentFromFrontmatter(frontmatter, body, {
-            id: frontmatter.name,
-            source: 'vault',
-            filePath,
-          }));
-        } catch { /* Non-critical: skip malformed agent files */ }
-      }
-    } catch { /* Non-critical: directory may not exist yet */ }
+            const { frontmatter, body } = parsed;
+            const agentId = frontmatter.name;
+
+            if (seenIds.has(agentId)) {
+              continue; // Skip duplicates
+            }
+
+            agents.push(buildAgentFromFrontmatter(frontmatter, body, {
+              id: agentId,
+              source: 'vault',
+              filePath,
+            }));
+
+            seenIds.add(agentId);
+          } catch { /* Non-critical: skip malformed agent files */ }
+        }
+      } catch { /* Non-critical: directory may not exist yet */ }
+    };
+
+    // Load from new path first
+    await loadFromPath(AGENTS_PATH);
+
+    // Load from legacy path (skip duplicates)
+    await loadFromPath(LEGACY_AGENTS_PATH);
 
     return agents;
   }
 
   async load(agent: AgentDefinition): Promise<AgentDefinition | null> {
-    const filePath = this.resolvePath(agent);
-    try {
-      const content = await this.adapter.read(filePath);
-      const parsed = parseAgentFile(content);
-      if (!parsed) return null;
-      const { frontmatter, body } = parsed;
-      return buildAgentFromFrontmatter(frontmatter, body, {
-        id: frontmatter.name,
-        source: agent.source,
-        filePath,
-      });
-    } catch (error) {
-      if (this.isFileNotFoundError(error)) {
-        return null;
+    // Try new path first, then legacy
+    for (const basePath of [AGENTS_PATH, LEGACY_AGENTS_PATH]) {
+      const filePath = this.resolvePath(agent, basePath);
+      try {
+        if (!(await this.adapter.exists(filePath))) {
+          continue;
+        }
+
+        const content = await this.adapter.read(filePath);
+        const parsed = parseAgentFile(content);
+        if (!parsed) continue;
+
+        const { frontmatter, body } = parsed;
+        return buildAgentFromFrontmatter(frontmatter, body, {
+          id: frontmatter.name,
+          source: agent.source,
+          filePath,
+        });
+      } catch (error) {
+        if (this.isFileNotFoundError(error)) {
+          continue;
+        }
+        throw error;
       }
-      throw error;
     }
+
+    return null;
   }
 
   async save(agent: AgentDefinition): Promise<void> {
@@ -61,20 +93,41 @@ export class AgentVaultStorage {
   }
 
   async delete(agent: AgentDefinition): Promise<void> {
-    await this.adapter.delete(this.resolvePath(agent));
+    // Delete from both paths to ensure cleanup
+    for (const basePath of [AGENTS_PATH, LEGACY_AGENTS_PATH]) {
+      try {
+        const filePath = this.resolvePath(agent, basePath);
+        if (await this.adapter.exists(filePath)) {
+          await this.adapter.delete(filePath);
+        }
+      } catch {
+        // Ignore errors
+      }
+    }
   }
 
-  private resolvePath(agent: AgentDefinition): string {
+  private resolvePath(agent: AgentDefinition, basePath = AGENTS_PATH): string {
     if (!agent.filePath) {
-      return `${AGENTS_PATH}/${agent.name}.md`;
+      return `${basePath}/${agent.name}.md`;
     }
 
     const normalized = agent.filePath.replace(/\\/g, '/');
-    const idx = normalized.lastIndexOf(`${AGENTS_PATH}/`);
+
+    // Check if filePath contains the new path
+    let idx = normalized.lastIndexOf(`${AGENTS_PATH}/`);
     if (idx !== -1) {
       return normalized.slice(idx);
     }
-    return `${AGENTS_PATH}/${agent.name}.md`;
+
+    // Check if filePath contains the legacy path
+    idx = normalized.lastIndexOf(`${LEGACY_AGENTS_PATH}/`);
+    if (idx !== -1) {
+      // Map legacy path to new path
+      const relativePath = normalized.slice(idx + LEGACY_AGENTS_PATH.length + 1);
+      return `${AGENTS_PATH}/${relativePath}`;
+    }
+
+    return `${basePath}/${agent.name}.md`;
   }
 
   private isFileNotFoundError(error: unknown): boolean {

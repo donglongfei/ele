@@ -18,6 +18,10 @@
 
 .claudian-thinking-block {
   margin: 8px 0;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background-color: var(--background-secondary);
+  padding: 8px 12px;
 }
 
 .claudian-text-block+.claudian-thinking-block {
@@ -43,6 +47,24 @@
   padding: 4px 0;
   cursor: pointer;
   overflow: hidden;
+  user-select: none;
+}
+
+.claudian-thinking-header:hover {
+  opacity: 0.8;
+}
+
+.claudian-thinking-arrow {
+  font-size: 10px;
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+  display: inline-block;
+  width: 12px;
+  text-align: center;
+}
+
+.claudian-thinking-block.expanded .claudian-thinking-arrow {
+  transform: rotate(180deg);
 }
 
 .claudian-thinking-label {

@@ -41,6 +41,7 @@ function createInitialState(): ChatStateData {
     pendingNewSessionPlan: null,
     planFilePath: null,
     prePlanPermissionMode: null,
+    pendingChannelKey: null,
   };
 }
 
@@ -349,6 +350,14 @@ export class ChatState {
     this.state.prePlanPermissionMode = value;
   }
 
+  get pendingChannelKey(): string | null {
+    return this.state.pendingChannelKey;
+  }
+
+  set pendingChannelKey(value: string | null) {
+    this.state.pendingChannelKey = value;
+  }
+
   // ============================================
   // Reset Methods
   // ============================================
@@ -391,6 +400,7 @@ export class ChatState {
     this.usage = null;
     this.currentTodos = null;
     this.autoScrollEnabled = true;
+    this.state.pendingChannelKey = null;
   }
 
   getPersistedMessages(): ChatMessage[] {

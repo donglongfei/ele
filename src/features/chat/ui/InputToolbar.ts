@@ -168,7 +168,11 @@ export class ThinkingBudgetSelector {
     for (const budget of [...THINKING_BUDGETS].reverse()) {
       const gearEl = optionsEl.createDiv({ cls: 'claudian-thinking-gear' });
       gearEl.setText(budget.label);
-      gearEl.setAttribute('title', budget.tokens > 0 ? `${budget.tokens.toLocaleString()} tokens` : 'Disabled');
+      // Show description in tooltip: tokens for fixed levels, description for adaptive
+      const tooltip = budget.tokens === null 
+        ? budget.description 
+        : (budget.tokens > 0 ? `${budget.tokens.toLocaleString()} tokens` : 'Disabled');
+      gearEl.setAttribute('title', tooltip);
 
       if (budget.value === currentBudget) {
         gearEl.addClass('selected');
@@ -236,6 +240,61 @@ export class PermissionToggle {
     const current = this.callbacks.getSettings().permissionMode;
     const newMode: PermissionMode = current === 'yolo' ? 'normal' : 'yolo';
     await this.callbacks.onPermissionModeChange(newMode);
+    this.updateDisplay();
+  }
+}
+
+/**
+ * Reasoning toggle - controls whether thinking process is shown
+ * Independent from thinking level (think deep vs show thinking)
+ */
+export class ReasoningToggle {
+  private container: HTMLElement;
+  private toggleEl: HTMLElement | null = null;
+  private iconEl: HTMLElement | null = null;
+  private callbacks: ToolbarCallbacks;
+
+  constructor(parentEl: HTMLElement, callbacks: ToolbarCallbacks) {
+    this.callbacks = callbacks;
+    this.container = parentEl.createDiv({ cls: 'claudian-reasoning-toggle' });
+    this.render();
+  }
+
+  private render() {
+    this.container.empty();
+
+    this.toggleEl = this.container.createDiv({ cls: 'claudian-reasoning-btn' });
+    this.iconEl = this.toggleEl.createSpan({ cls: 'claudian-reasoning-icon' });
+    
+    // Set icon (brain/eye symbol)
+    setIcon(this.iconEl, 'brain');
+    
+    this.updateDisplay();
+
+    this.toggleEl.addEventListener('click', () => this.toggle());
+  }
+
+  updateDisplay() {
+    if (!this.toggleEl || !this.iconEl) return;
+
+    const enabled = this.callbacks.getSettings().reasoningEnabled ?? false;
+
+    if (enabled) {
+      this.toggleEl.addClass('active');
+      this.toggleEl.setAttribute('title', 'Reasoning: ON (showing thinking process)');
+      this.iconEl.style.opacity = '1';
+    } else {
+      this.toggleEl.removeClass('active');
+      this.toggleEl.setAttribute('title', 'Reasoning: OFF (hidden)');
+      this.iconEl.style.opacity = '0.5';
+    }
+  }
+
+  private async toggle() {
+    if (!this.callbacks.onReasoningChange) return;
+    
+    const current = this.callbacks.getSettings().reasoningEnabled ?? false;
+    await this.callbacks.onReasoningChange(!current);
     this.updateDisplay();
   }
 }

@@ -79,6 +79,7 @@ import {
   type ResponseHandler,
   type UserContentBlock,
 } from './types';
+import { OpenClawService } from './OpenClawService';
 
 export type { ApprovalDecision };
 
@@ -163,9 +164,18 @@ export class ClaudianService {
   private crashRecoveryAttempted = false;
   private coldStartInProgress = false;  // Prevent consumer error restarts during cold-start
 
+  // OpenClaw Gateway service for configuration sync
+  private openClawService: OpenClawService | null = null;
+
   constructor(plugin: ClaudianPlugin, mcpManager: McpServerManager) {
     this.plugin = plugin;
     this.mcpManager = mcpManager;
+    
+    // Initialize OpenClaw service for Gateway configuration
+    const vaultPath = getVaultPath(plugin.app);
+    if (vaultPath) {
+      this.openClawService = new OpenClawService(plugin, vaultPath);
+    }
   }
 
   onReadyStateChange(listener: (ready: boolean) => void): () => void {
@@ -1371,6 +1381,59 @@ export class ClaudianService {
     this.sessionManager.reset();
   }
 
+  /**
+   * Start a fresh OpenClaw session for a new conversation.
+   * This ensures a new persistent query is started immediately (pre-warmed),
+   * eliminating cold-start latency on first message.
+   * 
+   * @param externalContextPaths - External context paths for the new session
+   * @returns true if successfully started, false otherwise
+   */
+  async startNewSession(externalContextPaths?: string[]): Promise<boolean> {
+    // Close any existing persistent query
+    this.closePersistentQuery('new conversation');
+
+    // Reset crash recovery for fresh start
+    this.crashRecoveryAttempted = false;
+
+    // Reset session manager to clear any existing session state
+    this.sessionManager.reset();
+
+    // Get required paths
+    const vaultPath = getVaultPath(this.plugin.app);
+    if (!vaultPath) {
+      new Notice('Could not determine vault path');
+      return false;
+    }
+
+    const cliPath = this.plugin.getResolvedClaudeCliPath();
+    if (!cliPath) {
+      new Notice('Claude CLI not found. Please install Claude Code CLI.');
+      return false;
+    }
+
+    // Track external context paths
+    if (externalContextPaths !== undefined) {
+      this.currentExternalContextPaths = externalContextPaths;
+    }
+
+    try {
+      // Start a new persistent query without a session ID (fresh session)
+      await this.startPersistentQuery(
+        vaultPath,
+        cliPath,
+        undefined, // No session ID = fresh session
+        this.currentExternalContextPaths
+      );
+      new Notice('OpenClaw session ready');
+      return true;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to start OpenClaw session';
+      new Notice(msg);
+      return false;
+    }
+  }
+
   getSessionId(): string | null {
     return this.sessionManager.getSessionId();
   }
@@ -1444,6 +1507,38 @@ export class ClaudianService {
   }
 
   /**
+   * Set reasoning display mode (show/hide thinking process).
+   * Delegates to OpenClawService to sync with Gateway.
+   */
+  async setReasoning(enabled: boolean, channelKey?: string): Promise<void> {
+    if (!this.openClawService) {
+      throw new Error('OpenClaw service not available');
+    }
+    await this.openClawService.setReasoning(enabled, channelKey);
+  }
+
+  /**
+   * Set thinking level (low/medium/high/adaptive).
+   * Delegates to OpenClawService to sync with Gateway.
+   */
+  async setThinkingLevel(
+    level: 'off' | 'low' | 'medium' | 'high' | 'adaptive',
+    channelKey?: string
+  ): Promise<void> {
+    if (!this.openClawService) {
+      throw new Error('OpenClaw service not available');
+    }
+    await this.openClawService.setThinkingLevel(level, channelKey);
+  }
+
+  /**
+   * Get the OpenClawService session manager for multi-session support.
+   */
+  get sessionManager() {
+    return this.openClawService?.sessionManager ?? null;
+  }
+
+  /**
    * Cleanup resources (Phase 5).
    * Called on plugin unload to close persistent query and abort any cold-start query.
    */
@@ -1454,6 +1549,10 @@ export class ClaudianService {
     // Cancel any in-flight cold-start query
     this.cancel();
     this.resetSession();
+    
+    // Cleanup OpenClaw service
+    this.openClawService?.cleanup();
+    this.openClawService = null;
   }
 
   async rewindFiles(sdkUserUuid: string, dryRun?: boolean): Promise<RewindFilesResult> {

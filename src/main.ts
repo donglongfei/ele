@@ -1,12 +1,12 @@
 /**
- * Claudian - Obsidian plugin entry point
+ * OpenCodian - Obsidian plugin entry point
  *
  * Registers the sidebar chat view, settings tab, and commands.
  * Manages conversation persistence and environment variable configuration.
  */
 
 import type { Editor, MarkdownView } from 'obsidian';
-import { Notice, Plugin } from 'obsidian';
+import { Notice, Plugin, addIcon } from 'obsidian';
 
 import { AgentManager } from './core/agents';
 import { McpServerManager } from './core/mcp';
@@ -22,15 +22,16 @@ import type {
   SubagentInfo,
 } from './core/types';
 import {
-  DEFAULT_CLAUDE_MODELS,
+  DEFAULT_KIMI_MODELS,
   DEFAULT_SETTINGS,
   getCliPlatformKey,
   getHostnameKey,
-  VIEW_TYPE_CLAUDIAN,
+  VIEW_TYPE_OPENCODIAN,
+  VIEW_TYPE_CLAUDIAN,  // Legacy support
 } from './core/types';
 import { ClaudianView } from './features/chat/ClaudianView';
 import { type InlineEditContext, InlineEditModal } from './features/inline-edit/ui/InlineEditModal';
-import { ClaudianSettingTab } from './features/settings/ClaudianSettings';
+import { OpenCodianSettingTab } from './features/settings/OpenCodianSettings';
 import { setLocale } from './i18n';
 import { ClaudeCliResolver } from './utils/claudeCli';
 import { buildCursorContext } from './utils/editor';
@@ -43,9 +44,10 @@ import {
   sdkSessionExists,
   type SDKSessionLoadResult,
 } from './utils/sdkSession';
+import { ELE_LOGO_SVG, ELE_LOGO_RED_SVG } from './shared/icons/logo';
 
 /**
- * Main plugin class for Claudian.
+ * Main plugin class for OpenCodian.
  * Handles plugin lifecycle, settings persistence, and conversation management.
  */
 export default class ClaudianPlugin extends Plugin {
@@ -60,6 +62,10 @@ export default class ClaudianPlugin extends Plugin {
 
   async onload() {
     await this.loadSettings();
+
+    // Register custom Ele logo icons
+    addIcon('ele-logo', ELE_LOGO_SVG);        // Black/white for ribbon (follows theme)
+    addIcon('ele-logo-red', ELE_LOGO_RED_SVG); // Red for chat panel title
 
     this.cliResolver = new ClaudeCliResolver();
 
@@ -76,12 +82,13 @@ export default class ClaudianPlugin extends Plugin {
     this.agentManager = new AgentManager(vaultPath, this.pluginManager);
     await this.agentManager.loadAgents();
 
+    // Register view (both constants point to same string for compatibility)
     this.registerView(
-      VIEW_TYPE_CLAUDIAN,
+      VIEW_TYPE_OPENCODIAN,
       (leaf) => new ClaudianView(leaf, this)
     );
 
-    this.addRibbonIcon('bot', 'Open Claudian', () => {
+    this.addRibbonIcon('ele-logo', 'Open Ele', () => {
       this.activateView();
     });
 
@@ -196,7 +203,7 @@ export default class ClaudianPlugin extends Plugin {
       },
     });
 
-    this.addSettingTab(new ClaudianSettingTab(this.app, this));
+    this.addSettingTab(new OpenCodianSettingTab(this.app, this));
   }
 
   async onunload() {
@@ -212,7 +219,7 @@ export default class ClaudianPlugin extends Plugin {
 
   async activateView() {
     const { workspace } = this.app;
-    let leaf = workspace.getLeavesOfType(VIEW_TYPE_CLAUDIAN)[0];
+    let leaf = workspace.getLeavesOfType(VIEW_TYPE_OPENCODIAN)[0];
 
     if (!leaf) {
       const newLeaf = this.settings.openInMainTab
@@ -220,7 +227,7 @@ export default class ClaudianPlugin extends Plugin {
         : workspace.getRightLeaf(false);
       if (newLeaf) {
         await newLeaf.setViewState({
-          type: VIEW_TYPE_CLAUDIAN,
+          type: VIEW_TYPE_OPENCODIAN,
           active: true,
         });
         leaf = newLeaf;
@@ -491,7 +498,7 @@ export default class ClaudianPlugin extends Plugin {
   }
 
   private getDefaultModelValues(): string[] {
-    return DEFAULT_CLAUDE_MODELS.map((m) => m.value);
+    return DEFAULT_KIMI_MODELS.map((m) => m.value);
   }
 
   private getPreferredCustomModel(envVars: Record<string, string>, customModels: { value: string }[]): string {
@@ -559,7 +566,7 @@ export default class ClaudianPlugin extends Plugin {
     if (customModels.length > 0) {
       this.settings.model = this.getPreferredCustomModel(envVars, customModels);
     } else {
-      this.settings.model = DEFAULT_CLAUDE_MODELS[0].value;
+      this.settings.model = DEFAULT_KIMI_MODELS[0].value;
     }
 
     this.settings.lastEnvHash = currentHash;
@@ -1070,9 +1077,9 @@ export default class ClaudianPlugin extends Plugin {
     return null;
   }
 
-  /** Returns all open Claudian views in the workspace. */
+  /** Returns all open OpenCodian views in the workspace. */
   getAllViews(): ClaudianView[] {
-    const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_CLAUDIAN);
+    const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_OPENCODIAN);
     return leaves.map(leaf => leaf.view as ClaudianView);
   }
 

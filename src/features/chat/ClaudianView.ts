@@ -1,7 +1,7 @@
 import type { EventRef, WorkspaceLeaf } from 'obsidian';
 import { ItemView, Notice, setIcon } from 'obsidian';
 
-import { VIEW_TYPE_CLAUDIAN } from '../../core/types';
+import { VIEW_TYPE_OPENCODIAN } from '../../core/types';
 import type ClaudianPlugin from '../../main';
 import { LOGO_SVG } from './constants';
 import { TabBar, TabManager, updatePlanModeUI } from './tabs';
@@ -66,15 +66,15 @@ export class ClaudianView extends ItemView {
   }
 
   getViewType(): string {
-    return VIEW_TYPE_CLAUDIAN;
+    return VIEW_TYPE_OPENCODIAN;
   }
 
   getDisplayText(): string {
-    return 'Claudian';
+    return 'Ele';
   }
 
   getIcon(): string {
-    return 'bot';
+    return 'ele-logo';
   }
 
   /** Refreshes the model selector display (used after env var changes). */
@@ -214,9 +214,6 @@ export class ClaudianView extends ItemView {
     path.setAttribute('fill', LOGO_SVG.fill);
     svg.appendChild(path);
     this.logoEl.appendChild(svg);
-
-    // Title text (hidden in header mode when 2+ tabs)
-    this.titleTextEl = this.titleSlotEl.createEl('h4', { text: 'Claudian', cls: 'claudian-title-text' });
 
     // Header actions container (for header mode - initially hidden)
     this.headerActionsEl = header.createDiv({ cls: 'claudian-header-actions claudian-header-actions-slot' });

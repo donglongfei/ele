@@ -230,24 +230,36 @@ export interface KeyboardNavigationSettings {
 export type TabBarPosition = 'input' | 'header';
 
 /**
- * Claudian-specific settings stored in .claude/claudian-settings.json.
- * These settings are NOT shared with Claude Code CLI.
+ * Claudian-specific settings stored in .opencode/opencodian-settings.json.
+ * These settings are NOT shared with OpenClaw Gateway.
  */
 export interface ClaudianSettings {
   // User preferences
   userName: string;
+
+  // OpenClaw Gateway connection
+  openClawGatewayUrl: string;  // WebSocket URL for OpenClaw Gateway (default: ws://127.0.0.1:18789)
+  openClawAuthToken: string;   // Authentication token for OpenClaw Gateway (for initial pairing)
+  openClawDeviceToken: string; // Device token after successful pairing
+  openClawSessionId: string;   // Session ID to use for agent requests (get from 'openclaw sessions')
+
+  // Device Pairing credentials (persisted after first pairing)
+  deviceId: string;            // Derived from publicKey (SHA-256 hash)
+  devicePublicKey: string;     // Ed25519 public key (base64url encoded)
+  devicePrivateKeyJwk: string; // Ed25519 private key (JWK format, JSON stringified)
 
   // Security (Claudian-specific, CC uses permissions.deny instead)
   enableBlocklist: boolean;
   blockedCommands: PlatformBlockedCommands;
   permissionMode: PermissionMode;
 
-  // Model & thinking (Claudian uses enum, CC uses full model ID string)
+  // Model & thinking (using Kimi models instead of Claude)
   model: ClaudeModel;
   thinkingBudget: ThinkingBudget;
+  reasoningEnabled: boolean;  // Show reasoning/thinking process to user
   enableAutoTitleGeneration: boolean;
   titleGenerationModel: string;  // Model for auto title generation (empty = auto)
-  show1MModel: boolean;  // Show Sonnet (1M) in model selector (requires Max subscription)
+  show1MModel: boolean;  // Show Sonnet (1M) in model selector (deprecated for Kimi)
   enableChrome: boolean;  // Enable Chrome extension support (passes --chrome flag)
   enableBangBash: boolean;  // Enable ! bash mode for direct command execution
 
@@ -258,14 +270,14 @@ export interface ClaudianSettings {
   allowedExportPaths: string[];
   persistentExternalContextPaths: string[];  // Paths that persist across all sessions
 
-  // Environment (string format, CC uses object format in settings.json)
+  // Environment (string format, OpenClaw uses object format in Gateway config)
   environmentVariables: string;
   envSnippets: EnvSnippet[];
   /**
    * Custom context window limits for models configured via environment variables.
    * Keys are model IDs (from ANTHROPIC_MODEL, ANTHROPIC_DEFAULT_*_MODEL env vars).
    * Values are token counts in range [1000, 10000000].
-   * Empty object means all models use default context limits (200k or 1M for Sonnet).
+   * Empty object means all models use default context limits (200k for Kimi K2.5).
    */
   customContextLimits: Record<string, number>;
 
@@ -303,17 +315,29 @@ export const DEFAULT_SETTINGS: ClaudianSettings = {
   // User preferences
   userName: '',
 
+  // OpenClaw Gateway
+  openClawGatewayUrl: 'ws://127.0.0.1:18789',
+  openClawAuthToken: '',  // Must be configured by user
+  openClawDeviceToken: '', // Saved after first successful pairing
+  openClawSessionId: '',  // Optional: configure session ID (or leave empty to auto-detect)
+
+  // Device Pairing credentials (generated on first connection)
+  deviceId: '',
+  devicePublicKey: '',
+  devicePrivateKeyJwk: '',
+
   // Security
   enableBlocklist: true,
   blockedCommands: getDefaultBlockedCommands(),
   permissionMode: 'yolo',
 
-  // Model & thinking
-  model: 'haiku',
-  thinkingBudget: 'off',
+  // Model & thinking (default to Kimi K2.5)
+  model: 'kimi-k2.5',
+  thinkingBudget: 'medium',
+  reasoningEnabled: true,  // Show reasoning by default
   enableAutoTitleGeneration: true,
-  titleGenerationModel: '',  // Empty = auto (ANTHROPIC_DEFAULT_HAIKU_MODEL or claude-haiku-4-5)
-  show1MModel: false,  // Hidden by default
+  titleGenerationModel: '',  // Empty = auto (kimi-k1.5 for speed)
+  show1MModel: false,  // Deprecated for Kimi
   enableChrome: false,  // Disabled by default
   enableBangBash: false,  // Disabled by default
 
@@ -344,7 +368,7 @@ export const DEFAULT_SETTINGS: ClaudianSettings = {
   claudeCliPathsByHost: {},  // Per-device paths keyed by hostname
   loadUserClaudeSettings: true,  // Default on for compatibility
 
-  lastClaudeModel: 'haiku',
+  lastClaudeModel: 'kimi-k2.5',
   lastCustomModel: '',
   lastEnvHash: '',
 

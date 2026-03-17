@@ -399,11 +399,60 @@ export class StreamController {
   // ============================================
 
   async appendText(text: string): Promise<void> {
-    const { state, renderer } = this.deps;
+    const { state, renderer, plugin } = this.deps;
     if (!state.currentContentEl) return;
 
     this.hideThinkingIndicator();
 
+    const reasoningEnabled = plugin.settings.reasoningEnabled ?? false;
+
+    // Simple approach: check for complete thinking block in current text
+    // Match <thinking>content</thinking> or <thinking ...>content</thinking>
+    const thinkingRegex = /<thinking(?:\s[^>]*)?>([\s\S]*?)<\/thinking>/;
+    const match = text.match(thinkingRegex);
+    
+    // Debug: log if we see thinking-like patterns
+    if (text.includes('<thinking')) {
+      console.log('[DEBUG] Found <thinking in text:', text.substring(0, 200));
+      console.log('[DEBUG] Regex match:', match);
+    }
+
+    if (match && reasoningEnabled) {
+      const beforeThinking = text.substring(0, match.index);
+      const thinkingContent = match[1];
+      const afterThinking = text.substring((match.index ?? 0) + match[0].length);
+
+      // Render text before thinking
+      if (beforeThinking) {
+        if (!state.currentTextEl) {
+          state.currentTextEl = state.currentContentEl.createDiv({ cls: 'claudian-text-block' });
+          state.currentTextContent = '';
+        }
+        state.currentTextContent += beforeThinking;
+        await renderer.renderContent(state.currentTextEl, state.currentTextContent);
+      }
+
+      // Finalize text block
+      if (state.currentTextEl) {
+        this.finalizeCurrentTextBlock();
+      }
+
+      // Render thinking block
+      if (thinkingContent.trim()) {
+        await this.appendThinking(thinkingContent);
+        this.finalizeCurrentThinkingBlock();
+      }
+
+      // Render text after thinking
+      if (afterThinking) {
+        state.currentTextEl = state.currentContentEl.createDiv({ cls: 'claudian-text-block' });
+        state.currentTextContent = afterThinking;
+        await renderer.renderContent(state.currentTextEl, state.currentTextContent);
+      }
+      return;
+    }
+
+    // Normal text rendering
     if (!state.currentTextEl) {
       state.currentTextEl = state.currentContentEl.createDiv({ cls: 'claudian-text-block' });
       state.currentTextContent = '';
@@ -415,6 +464,7 @@ export class StreamController {
 
   finalizeCurrentTextBlock(msg?: ChatMessage): void {
     const { state, renderer } = this.deps;
+    
     if (msg && state.currentTextContent) {
       msg.contentBlocks = msg.contentBlocks || [];
       msg.contentBlocks.push({ type: 'text', content: state.currentTextContent });
@@ -432,11 +482,41 @@ export class StreamController {
   // ============================================
 
   async appendThinking(content: string): Promise<void> {
-    const { state, renderer } = this.deps;
+    const { state, renderer, plugin } = this.deps;
     if (!state.currentContentEl) return;
 
     this.hideThinkingIndicator();
-    if (!state.currentThinkingState) {
+    
+    // Only create thinking block if reasoning is enabled
+    const reasoningEnabled = plugin.settings.reasoningEnabled ?? false;
+    
+    console.log('[DEBUG] appendThinking called:', {
+      contentLength: content.length,
+      reasoningEnabled: reasoningEnabled,
+      contentPreview: content.substring(0, 100)
+    });
+    
+    if (!reasoningEnabled) {
+      // Still accumulate thinking content for storage, but don't render
+      if (!state.currentThinkingState) {
+        // Create a hidden/virtual thinking state that doesn't render to DOM
+        state.currentThinkingState = {
+          content: '',
+          wrapperEl: null as any,
+          contentEl: null as any,
+          labelEl: null as any,
+          startTime: Date.now(),
+          timerInterval: null,
+          isExpanded: false,
+        };
+      }
+      state.currentThinkingState.content += content;
+      console.log('[DEBUG] Reasoning disabled - storing thinking content virtually');
+      return;
+    }
+    
+    if (!state.currentThinkingState || !state.currentThinkingState.wrapperEl) {
+      console.log('[DEBUG] Creating new thinking block in DOM');
       state.currentThinkingState = createThinkingBlock(
         state.currentContentEl,
         (el, md) => renderer.renderContent(el, md)
@@ -444,11 +524,28 @@ export class StreamController {
     }
 
     await appendThinkingContent(state.currentThinkingState, content, (el, md) => renderer.renderContent(el, md));
+    console.log('[DEBUG] Appended thinking content');
   }
 
   finalizeCurrentThinkingBlock(msg?: ChatMessage): void {
     const { state } = this.deps;
     if (!state.currentThinkingState) return;
+
+    // Handle virtual thinking state (when reasoning is disabled)
+    if (!state.currentThinkingState.wrapperEl) {
+      // Virtual state - just save content without DOM finalization
+      if (msg && state.currentThinkingState.content) {
+        const durationSeconds = Math.floor((Date.now() - state.currentThinkingState.startTime) / 1000);
+        msg.contentBlocks = msg.contentBlocks || [];
+        msg.contentBlocks.push({
+          type: 'thinking',
+          content: state.currentThinkingState.content,
+          durationSeconds,
+        });
+      }
+      state.currentThinkingState = null;
+      return;
+    }
 
     const durationSeconds = finalizeThinkingBlock(state.currentThinkingState);
 
