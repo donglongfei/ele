@@ -2,19 +2,19 @@ import * as fs from 'fs';
 import type { App } from 'obsidian';
 import { Notice, PluginSettingTab, Setting } from 'obsidian';
 
-import { getCurrentPlatformKey, getHostnameKey } from '../../core/types';
+import { getCurrentPlatformKey } from '../../core/types';
 import { DEFAULT_KIMI_MODELS } from '../../core/types/models';
 import { getAvailableLocales, getLocaleDisplayName, setLocale, t } from '../../i18n';
 import type { Locale, TranslationKey } from '../../i18n/types';
 import type ClaudianPlugin from '../../main';
-import { findNodeExecutable, formatContextLimit, getCustomModelIds, getEnhancedPath, getModelsFromEnvironment, parseContextLimit, parseEnvironmentVariables } from '../../utils/env';
-import { expandHomePath } from '../../utils/path';
+import { formatContextLimit, getCustomModelIds, getModelsFromEnvironment, parseContextLimit, parseEnvironmentVariables } from '../../utils/env';
+
 import { ClaudianView } from '../chat/ClaudianView';
 import { buildNavMappingText, parseNavMappings } from './keyboardNavigation';
 import { AgentSettings } from './ui/AgentSettings';
 import { EnvSnippetManager } from './ui/EnvSnippetManager';
 import { McpSettingsManager } from './ui/McpSettingsManager';
-import { PluginSettingsManager } from './ui/PluginSettingsManager';
+import { SkillSettingsManager } from './ui/SkillSettingsManager';
 import { SlashCommandSettings } from './ui/SlashCommandSettings';
 
 function formatHotkey(hotkey: { modifiers: string[]; key: string }): string {
@@ -445,30 +445,18 @@ export class OpenCodianSettingTab extends PluginSettingTab {
     const mcpContainer = containerEl.createDiv({ cls: 'opencodian-mcp-container' });
     new McpSettingsManager(mcpContainer, this.plugin);
 
-    new Setting(containerEl).setName(t('settings.plugins.name')).setHeading();
+    new Setting(containerEl).setName(t('settings.skills.name')).setHeading();
 
-    const pluginsDesc = containerEl.createDiv({ cls: 'opencodian-plugin-settings-desc' });
-    pluginsDesc.createEl('p', {
-      text: t('settings.plugins.desc'),
+    const skillsDesc = containerEl.createDiv({ cls: 'opencodian-skill-settings-desc' });
+    skillsDesc.createEl('p', {
+      text: t('settings.skills.desc'),
       cls: 'setting-item-description',
     });
 
-    const pluginsContainer = containerEl.createDiv({ cls: 'opencodian-plugins-container' });
-    new PluginSettingsManager(pluginsContainer, this.plugin);
+    const skillsContainer = containerEl.createDiv({ cls: 'opencodian-skills-container' });
+    new SkillSettingsManager(skillsContainer, this.plugin);
 
     new Setting(containerEl).setName(t('settings.safety')).setHeading();
-
-    new Setting(containerEl)
-      .setName(t('settings.loadUserSettings.name'))
-      .setDesc(t('settings.loadUserSettings.desc'))
-      .addToggle((toggle) =>
-        toggle
-          .setValue(this.plugin.settings.loadUserClaudeSettings)
-          .onChange(async (value) => {
-            this.plugin.settings.loadUserClaudeSettings = value;
-            await this.plugin.saveSettings();
-          })
-      );
 
     new Setting(containerEl)
       .setName(t('settings.enableBlocklist.name'))
@@ -699,83 +687,7 @@ export class OpenCodianSettingTab extends PluginSettingTab {
       updateMaxTabsWarning(this.plugin.settings.maxTabs ?? 3);
     });
 
-    const hostnameKey = getHostnameKey();
-
-    const platformDesc = process.platform === 'win32'
-      ? t('settings.cliPath.descWindows')
-      : t('settings.cliPath.descUnix');
-    const cliPathDescription = `${t('settings.cliPath.desc')} ${platformDesc}`;
-
-    const cliPathSetting = new Setting(containerEl)
-      .setName(`${t('settings.cliPath.name')} (${hostnameKey})`)
-      .setDesc(cliPathDescription);
-
-    const validationEl = containerEl.createDiv({ cls: 'opencodian-cli-path-validation' });
-    validationEl.style.color = 'var(--text-error)';
-    validationEl.style.fontSize = '0.85em';
-    validationEl.style.marginTop = '-0.5em';
-    validationEl.style.marginBottom = '0.5em';
-    validationEl.style.display = 'none';
-
-    const validatePath = (value: string): string | null => {
-      const trimmed = value.trim();
-      if (!trimmed) return null; // Empty is valid (auto-detect)
-
-      const expandedPath = expandHomePath(trimmed);
-
-      if (!fs.existsSync(expandedPath)) {
-        return t('settings.cliPath.validation.notExist');
-      }
-      const stat = fs.statSync(expandedPath);
-      if (!stat.isFile()) {
-        return t('settings.cliPath.validation.isDirectory');
-      }
-      return null;
-    };
-
-    cliPathSetting.addText((text) => {
-      const placeholder = process.platform === 'win32'
-        ? 'D:\\nodejs\\node_global\\node_modules\\@anthropic-ai\\claude-code\\cli.js'
-        : '/usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js';
-
-      const currentValue = this.plugin.settings.claudeCliPathsByHost?.[hostnameKey] || '';
-
-      text
-        .setPlaceholder(placeholder)
-        .setValue(currentValue)
-        .onChange(async (value) => {
-          const error = validatePath(value);
-          if (error) {
-            validationEl.setText(error);
-            validationEl.style.display = 'block';
-            text.inputEl.style.borderColor = 'var(--text-error)';
-          } else {
-            validationEl.style.display = 'none';
-            text.inputEl.style.borderColor = '';
-          }
-
-          const trimmed = value.trim();
-          if (!this.plugin.settings.claudeCliPathsByHost) {
-            this.plugin.settings.claudeCliPathsByHost = {};
-          }
-          this.plugin.settings.claudeCliPathsByHost[hostnameKey] = trimmed;
-          await this.plugin.saveSettings();
-          this.plugin.cliResolver?.reset();
-          const view = this.plugin.getView();
-          await view?.getTabManager()?.broadcastToAllTabs(
-            (service) => Promise.resolve(service.cleanup())
-          );
-        });
-      text.inputEl.addClass('opencodian-settings-cli-path-input');
-      text.inputEl.style.width = '100%';
-
-      const initialError = validatePath(currentValue);
-      if (initialError) {
-        validationEl.setText(initialError);
-        validationEl.style.display = 'block';
-        text.inputEl.style.borderColor = 'var(--text-error)';
-      }
-    });
+    // Note: CLI path settings removed - Ele uses OpenClaw Gateway, not Claude CLI
   }
 
   private renderContextLimitsSection(): void {

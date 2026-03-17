@@ -37,6 +37,7 @@ import { CC_SETTINGS_PATH, CCSettingsStorage, isLegacyPermissionsFormat } from '
 import {
   OpenCodianSettingsStorage,
   normalizeBlockedCommands,
+  type StoredClaudianSettings,
   type StoredOpenCodianSettings,
 } from './OpenCodianSettingsStorage';
 import { McpStorage } from './McpStorage';
@@ -90,9 +91,10 @@ interface LegacySettingsJson {
   systemPrompt?: string;
   allowedExportPaths?: string[];
   keyboardNavigation?: unknown;
-  claudeCliPath?: string;
-  claudeCliPaths?: unknown;
-  loadUserClaudeSettings?: boolean;
+  // Deprecated: CLI paths removed - Ele uses OpenClaw Gateway
+  // claudeCliPath?: string;
+  // claudeCliPaths?: unknown;
+  // loadUserClaudeSettings?: boolean;
   enableAutoTitleGeneration?: boolean;
   titleGenerationModel?: string;
 
@@ -247,9 +249,8 @@ export class StorageService {
       allowedExportPaths: oldSettings.allowedExportPaths ?? DEFAULT_SETTINGS.allowedExportPaths,
       persistentExternalContextPaths: DEFAULT_SETTINGS.persistentExternalContextPaths,
       keyboardNavigation: oldSettings.keyboardNavigation as StoredClaudianSettings['keyboardNavigation'] ?? DEFAULT_SETTINGS.keyboardNavigation,
-      claudeCliPath: oldSettings.claudeCliPath ?? DEFAULT_SETTINGS.claudeCliPath,
-      claudeCliPathsByHost: DEFAULT_SETTINGS.claudeCliPathsByHost,  // Migration to hostname-based handled in main.ts
-      loadUserClaudeSettings: oldSettings.loadUserClaudeSettings ?? DEFAULT_SETTINGS.loadUserClaudeSettings,
+      // Note: CLI paths removed - Ele uses OpenClaw Gateway
+      // claudeCliPath, claudeCliPathsByHost, loadUserClaudeSettings deprecated
       enableAutoTitleGeneration: oldSettings.enableAutoTitleGeneration ?? DEFAULT_SETTINGS.enableAutoTitleGeneration,
       titleGenerationModel: oldSettings.titleGenerationModel ?? DEFAULT_SETTINGS.titleGenerationModel,
       lastClaudeModel: DEFAULT_SETTINGS.lastClaudeModel,

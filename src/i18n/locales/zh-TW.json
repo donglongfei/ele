@@ -150,9 +150,9 @@
       "name": "MCP 伺服器",
       "desc": "設定模型上下文協定伺服器，透過外部工具和資料來源擴展 AI 的能力。啟用上下文保存模式的伺服器需要 @ 提及才能啟用。"
     },
-    "plugins": {
-      "name": "OpenClaw 外掛程式",
-      "desc": "啟用或停用從 ~/.opencode/plugins 發現的 OpenClaw 外掛程式。已啟用的外掛程式按儲存庫儲存。"
+    "skills": {
+      "name": "OpenClaw 技能",
+      "desc": "查看和管理從 ~/.openclaw/skills/ 和 {vault}/skills/ 載入的 OpenClaw 技能。技能是在 SKILL.md 檔案中定義的可複用功能模組。"
     },
     "subagents": {
       "name": "子代理",
@@ -166,14 +166,14 @@
       "created": "已建立子代理「{name}」",
       "updated": "已更新子代理「{name}」",
       "deleted": "已刪除子代理「{name}」",
-      "duplicateName": "已存在名為「{name}」的代理",
+      "duplicateName": "名為「{name}」的代理已存在",
       "descriptionRequired": "描述為必填",
       "promptRequired": "系統提示詞為必填",
       "modal": {
         "titleEdit": "編輯子代理",
         "titleAdd": "新增子代理",
         "name": "名稱",
-        "nameDesc": "僅限小寫字母、數字與連字號",
+        "nameDesc": "僅限小寫字母、數字和連字號",
         "namePlaceholder": "code-reviewer",
         "description": "描述",
         "descriptionDesc": "此代理的簡短描述",
@@ -193,10 +193,6 @@
       }
     },
     "safety": "安全",
-    "loadUserSettings": {
-      "name": "載入使用者 OpenClaw 設定",
-      "desc": "載入 ~/.opencode/settings.json。啟用後，使用者的 OpenClaw 權限規則可能繞過安全模式。"
-    },
     "enableBlocklist": {
       "name": "啟用命令黑名單",
       "desc": "阻止潛在危險的 bash 命令"

@@ -79,7 +79,7 @@ export function parseModel(model?: string): 'sonnet' | 'opus' | 'haiku' | 'inher
 export function buildAgentFromFrontmatter(
   frontmatter: AgentFrontmatter,
   body: string,
-  meta: { id: string; source: AgentDefinition['source']; filePath?: string; pluginName?: string }
+  meta: { id: string; source: AgentDefinition['source']; filePath?: string }
 ): AgentDefinition {
   return {
     id: meta.id,
@@ -91,7 +91,6 @@ export function buildAgentFromFrontmatter(
     model: parseModel(frontmatter.model),
     source: meta.source,
     filePath: meta.filePath,
-    pluginName: meta.pluginName,
     skills: frontmatter.skills,
     permissionMode: parsePermissionMode(frontmatter.permissionMode),
     hooks: frontmatter.hooks,

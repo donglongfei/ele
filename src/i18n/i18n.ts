@@ -1,18 +1,11 @@
 /**
- * i18n - Internationalization service for Claudian
+ * i18n - Internationalization service for Ele
  *
  * Provides translation functionality for all UI strings.
- * Supports 10 locales with English as the default fallback.
+ * Supports English and Chinese locales with English as the default fallback.
  */
 
-import * as de from './locales/de.json';
 import * as en from './locales/en.json';
-import * as es from './locales/es.json';
-import * as fr from './locales/fr.json';
-import * as ja from './locales/ja.json';
-import * as ko from './locales/ko.json';
-import * as pt from './locales/pt.json';
-import * as ru from './locales/ru.json';
 import * as zhCN from './locales/zh-CN.json';
 import * as zhTW from './locales/zh-TW.json';
 import type { Locale, TranslationKey } from './types';
@@ -21,13 +14,6 @@ const translations: Record<Locale, typeof en> = {
   en,
   'zh-CN': zhCN,
   'zh-TW': zhTW,
-  ja,
-  ko,
-  de,
-  fr,
-  es,
-  ru,
-  pt,
 };
 
 const DEFAULT_LOCALE: Locale = 'en';
@@ -126,14 +112,6 @@ export function getLocaleDisplayName(locale: Locale): string {
     'en': 'English',
     'zh-CN': '简体中文',
     'zh-TW': '繁體中文',
-    'ja': '日本語',
-    'ko': '한국어',
-    'de': 'Deutsch',
-    'fr': 'Français',
-    'es': 'Español',
-    'ru': 'Русский',
-    'pt': 'Português',
   };
   return names[locale] || locale;
 }
-

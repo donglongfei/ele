@@ -150,9 +150,9 @@
       "name": "MCP Servers",
       "desc": "Configure Model Context Protocol servers to extend Claude's capabilities with external tools and data sources. Servers with context-saving mode require @mention to activate."
     },
-    "plugins": {
-      "name": "OpenClaw Plugins",
-      "desc": "Enable or disable OpenClaw plugins discovered from ~/.opencode/plugins. Enabled plugins are stored per vault."
+    "skills": {
+      "name": "OpenClaw Skills",
+      "desc": "View and manage OpenClaw skills loaded from ~/.openclaw/skills/ and {vault}/skills/. Skills are reusable capability modules defined in SKILL.md files."
     },
     "subagents": {
       "name": "Subagents",
@@ -193,10 +193,7 @@
       }
     },
     "safety": "Safety",
-    "loadUserSettings": {
-      "name": "Load user OpenClaw settings",
-      "desc": "Load ~/.opencode/settings.json. When enabled, user's OpenClaw permission rules may bypass Safe mode."
-    },
+
     "enableBlocklist": {
       "name": "Enable command blocklist",
       "desc": "Block potentially dangerous bash commands"

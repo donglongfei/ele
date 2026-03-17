@@ -2,7 +2,7 @@
  * i18n type definitions
  */
 
-export type Locale = 'en' | 'zh-CN' | 'zh-TW' | 'ja' | 'ko' | 'de' | 'fr' | 'es' | 'ru' | 'pt';
+export type Locale = 'en' | 'zh-CN' | 'zh-TW';
 
 /**
  * Translation key type - represents all valid translation keys
@@ -124,13 +124,18 @@ export type TranslationKey =
   | 'settings.hiddenSlashCommands.desc'
   | 'settings.hiddenSlashCommands.placeholder'
 
+  // Settings - Gateway
+  | 'settings.gateway'
+  | 'settings.gatewayUrl.name'
+  | 'settings.gatewayUrl.desc'
+
   // Settings - MCP Servers
   | 'settings.mcpServers.name'
   | 'settings.mcpServers.desc'
 
-  // Settings - Plugins
-  | 'settings.plugins.name'
-  | 'settings.plugins.desc'
+  // Settings - Skills
+  | 'settings.skills.name'
+  | 'settings.skills.desc'
 
   // Settings - Subagents
   | 'settings.subagents.name'
@@ -170,8 +175,6 @@ export type TranslationKey =
 
   // Settings - Safety
   | 'settings.safety'
-  | 'settings.loadUserSettings.name'
-  | 'settings.loadUserSettings.desc'
   | 'settings.enableBlocklist.name'
   | 'settings.enableBlocklist.desc'
   | 'settings.blockedCommands.name'
@@ -226,12 +229,7 @@ export type TranslationKey =
   | 'settings.enableAutoScroll.desc'
   | 'settings.openInMainTab.name'
   | 'settings.openInMainTab.desc'
-  | 'settings.cliPath.name'
-  | 'settings.cliPath.desc'
-  | 'settings.cliPath.descWindows'
-  | 'settings.cliPath.descUnix'
-  | 'settings.cliPath.validation.notExist'
-  | 'settings.cliPath.validation.isDirectory'
+  // Note: CLI path settings removed - Ele uses OpenClaw Gateway
 
   // Settings - Language
   | 'settings.language.name'

@@ -10,7 +10,6 @@ import { Notice, Plugin, addIcon } from 'obsidian';
 
 import { AgentManager } from './core/agents';
 import { McpServerManager } from './core/mcp';
-import { PluginManager } from './core/plugins';
 import { StorageService } from './core/storage';
 import { isSubagentToolName, TOOL_TASK } from './core/tools/toolNames';
 import type {
@@ -24,7 +23,6 @@ import type {
 import {
   DEFAULT_KIMI_MODELS,
   DEFAULT_SETTINGS,
-  getCliPlatformKey,
   getHostnameKey,
   VIEW_TYPE_OPENCODIAN,
   VIEW_TYPE_CLAUDIAN,  // Legacy support
@@ -33,7 +31,6 @@ import { ClaudianView } from './features/chat/ClaudianView';
 import { type InlineEditContext, InlineEditModal } from './features/inline-edit/ui/InlineEditModal';
 import { OpenCodianSettingTab } from './features/settings/OpenCodianSettings';
 import { setLocale } from './i18n';
-import { ClaudeCliResolver } from './utils/claudeCli';
 import { buildCursorContext } from './utils/editor';
 import { getCurrentModelFromEnvironment, getModelsFromEnvironment, parseEnvironmentVariables } from './utils/env';
 import { getVaultPath } from './utils/path';
@@ -53,10 +50,8 @@ import { ELE_LOGO_SVG, ELE_LOGO_RED_SVG } from './shared/icons/logo';
 export default class ClaudianPlugin extends Plugin {
   settings: ClaudianSettings;
   mcpManager: McpServerManager;
-  pluginManager: PluginManager;
   agentManager: AgentManager;
   storage: StorageService;
-  cliResolver: ClaudeCliResolver;
   private conversations: Conversation[] = [];
   private runtimeEnvironmentVariables = '';
 
@@ -67,19 +62,13 @@ export default class ClaudianPlugin extends Plugin {
     addIcon('ele-logo', ELE_LOGO_SVG);        // Black/white for ribbon (follows theme)
     addIcon('ele-logo-red', ELE_LOGO_RED_SVG); // Red for chat panel title
 
-    this.cliResolver = new ClaudeCliResolver();
-
     // Initialize MCP manager (shared for agent + UI)
     this.mcpManager = new McpServerManager(this.storage.mcp);
     await this.mcpManager.loadServers();
 
-    // Initialize plugin manager (reads from installed_plugins.json + settings.json)
+    // Initialize agent manager (loads vault and global agents)
     const vaultPath = (this.app.vault.adapter as any).basePath;
-    this.pluginManager = new PluginManager(vaultPath, this.storage.ccSettings);
-    await this.pluginManager.loadPlugins();
-
-    // Initialize agent manager (loads plugin agents from plugin install paths)
-    this.agentManager = new AgentManager(vaultPath, this.pluginManager);
+    this.agentManager = new AgentManager(vaultPath);
     await this.agentManager.loadAgents();
 
     // Register view (both constants point to same string for compatibility)
@@ -259,25 +248,7 @@ export default class ClaudianPlugin extends Plugin {
       this.settings.permissionMode = 'normal';
     }
 
-    // Initialize and migrate legacy CLI paths to hostname-based paths
-    this.settings.claudeCliPathsByHost ??= {};
-    const hostname = getHostnameKey();
-    let didMigrateCliPath = false;
-
-    if (!this.settings.claudeCliPathsByHost[hostname]) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const platformPaths = (this.settings as any).claudeCliPaths as Record<string, string> | undefined;
-      const migratedPath = platformPaths?.[getCliPlatformKey()]?.trim() || this.settings.claudeCliPath?.trim();
-
-      if (migratedPath) {
-        this.settings.claudeCliPathsByHost[hostname] = migratedPath;
-        this.settings.claudeCliPath = '';
-        didMigrateCliPath = true;
-      }
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    delete (this.settings as any).claudeCliPaths;
+    // Note: CLI path migration removed - Ele uses OpenClaw Gateway, not Claude CLI
 
     // Load all conversations from session files (legacy JSONL + native metadata)
     const { conversations: legacyConversations, failedCount } = await this.storage.sessions.loadAllConversations();
@@ -360,7 +331,7 @@ export default class ClaudianPlugin extends Plugin {
     this.runtimeEnvironmentVariables = this.settings.environmentVariables || '';
     const { changed, invalidatedConversations } = this.reconcileModelWithEnvironment(this.runtimeEnvironmentVariables);
 
-    if (changed || didMigrateCliPath) {
+    if (changed) {
       await this.saveSettings();
     }
 
@@ -487,14 +458,6 @@ export default class ClaudianPlugin extends Plugin {
   /** Returns the runtime environment variables (fixed at plugin load). */
   getActiveEnvironmentVariables(): string {
     return this.runtimeEnvironmentVariables;
-  }
-
-  getResolvedClaudeCliPath(): string | null {
-    return this.cliResolver.resolve(
-      this.settings.claudeCliPathsByHost,  // Per-device paths (preferred)
-      this.settings.claudeCliPath,          // Legacy path (fallback)
-      this.getActiveEnvironmentVariables()
-    );
   }
 
   private getDefaultModelValues(): string[] {

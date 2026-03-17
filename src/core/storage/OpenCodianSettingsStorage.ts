@@ -12,8 +12,8 @@
  * - Content settings (tags, media, prompts)
  * - Environment (string format, snippets)
  * - UI settings (keyboard navigation)
- * - CLI paths (deprecated for OpenClaw, kept for compatibility)
  * - State (merged from data.json)
+ * - Note: CLI paths removed - Ele uses OpenClaw Gateway
  */
 
 import type { ClaudeModel, ClaudianSettings, PlatformBlockedCommands } from '../types';
@@ -65,19 +65,7 @@ export function normalizeBlockedCommands(value: unknown): PlatformBlockedCommand
   };
 }
 
-function normalizeHostnameCliPaths(value: unknown): Record<string, string> {
-  if (!value || typeof value !== 'object') {
-    return {};
-  }
-
-  const result: Record<string, string> = {};
-  for (const [key, val] of Object.entries(value)) {
-    if (typeof val === 'string' && val.trim()) {
-      result[key] = val.trim();
-    }
-  }
-  return result;
-}
+// Note: normalizeHostnameCliPaths removed - CLI paths not used with OpenClaw Gateway
 
 export class OpenCodianSettingsStorage {
   constructor(private adapter: VaultFileAdapter) { }
@@ -110,15 +98,12 @@ export class OpenCodianSettingsStorage {
     const { activeConversationId: _activeConversationId, ...storedWithoutLegacy } = stored;
 
     const blockedCommands = normalizeBlockedCommands(stored.blockedCommands);
-    const hostnameCliPaths = normalizeHostnameCliPaths(stored.claudeCliPathsByHost);
-    const legacyCliPath = typeof stored.claudeCliPath === 'string' ? stored.claudeCliPath : '';
 
     return {
       ...this.getDefaults(),
       ...storedWithoutLegacy,
       blockedCommands,
-      claudeCliPath: legacyCliPath,
-      claudeCliPathsByHost: hostnameCliPaths,
+      // Note: CLI paths removed - Ele uses OpenClaw Gateway
     } as StoredOpenCodianSettings;
   }
 

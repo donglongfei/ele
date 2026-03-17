@@ -41,10 +41,10 @@ export const CLAUDIAN_ONLY_FIELDS = new Set([
   // UI settings
   'keyboardNavigation',
 
-  // CLI paths
-  'claudeCliPath',
-  'claudeCliPaths',
-  'loadUserClaudeSettings',
+  // Deprecated: CLI paths removed - Ele uses OpenClaw Gateway
+  // 'claudeCliPath',
+  // 'claudeCliPaths',
+  // 'loadUserClaudeSettings',
 
   // Deprecated fields (removed completely, not migrated)
   'allowedContextPaths',
@@ -75,9 +75,10 @@ export const MIGRATABLE_CLAUDIAN_FIELDS = new Set([
   'envSnippets',
   'env', // Converted to environmentVariables
   'keyboardNavigation',
-  'claudeCliPath',
-  'claudeCliPaths',
-  'loadUserClaudeSettings',
+  // Deprecated: CLI paths removed - Ele uses OpenClaw Gateway
+  // 'claudeCliPath',
+  // 'claudeCliPaths',
+  // 'loadUserClaudeSettings',
 ]);
 
 /**
@@ -87,6 +88,10 @@ export const DEPRECATED_FIELDS = new Set([
   'allowedContextPaths',
   'showToolUse',
   'toolCallExpandedByDefault',
+  // Deprecated: CLI paths removed - Ele uses OpenClaw Gateway
+  'claudeCliPath',
+  'claudeCliPaths',
+  'loadUserClaudeSettings',
 ]);
 
 /**

@@ -109,7 +109,7 @@ export interface PersistentQueryConfig {
   externalContextPaths: string[];
   allowedExportPaths: string[];
   settingSources: string;
-  claudeCliPath: string;
+  // Note: claudeCliPath removed - Ele uses OpenClaw Gateway
   show1MModel: boolean;  // Whether 1M beta flag is always included
   enableChrome: boolean;  // Whether --chrome flag is passed to CLI
 }

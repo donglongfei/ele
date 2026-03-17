@@ -16,7 +16,6 @@ import type {
 } from '@anthropic-ai/claude-agent-sdk';
 
 import type { McpServerManager } from '../mcp';
-import type { PluginManager } from '../plugins';
 import { buildSystemPrompt, type SystemPromptSettings } from '../prompts/mainAgent';
 import type { ClaudianSettings, PermissionMode } from '../types';
 import { resolveModelWithBetas, THINKING_BUDGETS } from '../types';
@@ -45,8 +44,6 @@ export interface QueryOptionsContext {
   enhancedPath: string;
   /** MCP server manager for server configuration. */
   mcpManager: McpServerManager;
-  /** Plugin manager for Claude Code plugins. */
-  pluginManager: PluginManager;
 }
 
 /**
@@ -113,7 +110,7 @@ export class QueryOptionsBuilder {
     if (currentConfig.disallowedToolsKey !== newConfig.disallowedToolsKey) return true;
     if (currentConfig.pluginsKey !== newConfig.pluginsKey) return true;
     if (currentConfig.settingSources !== newConfig.settingSources) return true;
-    if (currentConfig.claudeCliPath !== newConfig.claudeCliPath) return true;
+
 
     // Note: Permission mode is handled dynamically via setPermissionMode() in ClaudianService.
     // Since allowDangerouslySkipPermissions is always true, both directions work without restart.
@@ -158,8 +155,8 @@ export class QueryOptionsBuilder {
     const allDisallowedTools = ctx.mcpManager.getAllDisallowedMcpTools();
     const disallowedToolsKey = allDisallowedTools.join('|');
 
-    // Compute pluginsKey from active plugins
-    const pluginsKey = ctx.pluginManager.getPluginsKey();
+    // Note: Plugin system removed - Ele uses OpenClaw Gateway
+    const pluginsKey = '';
 
     return {
       model: ctx.settings.model,
@@ -171,8 +168,8 @@ export class QueryOptionsBuilder {
       pluginsKey,
       externalContextPaths: externalContextPaths || [],
       allowedExportPaths: ctx.settings.allowedExportPaths,
-      settingSources: ctx.settings.loadUserClaudeSettings ? 'user,project' : 'project',
-      claudeCliPath: ctx.cliPath,
+      // Note: Claude CLI settings removed - Ele uses OpenClaw Gateway
+      settingSources: 'project',
       show1MModel: ctx.settings.show1MModel,
       enableChrome: ctx.settings.enableChrome,
     };
@@ -196,10 +193,9 @@ export class QueryOptionsBuilder {
       systemPrompt,
       model: resolved.model,
       abortController: ctx.abortController,
-      pathToClaudeCodeExecutable: ctx.cliPath,
-      settingSources: ctx.settings.loadUserClaudeSettings
-        ? ['user', 'project']
-        : ['project'],
+      // Note: Claude CLI path removed - Ele uses OpenClaw Gateway
+      pathToClaudeCodeExecutable: '',
+      settingSources: ['project'],
       env: {
         ...process.env,
         ...ctx.customEnv,
@@ -264,11 +260,9 @@ export class QueryOptionsBuilder {
       systemPrompt,
       model: resolved.model,
       abortController: ctx.abortController,
-      pathToClaudeCodeExecutable: ctx.cliPath,
-      // User settings may contain permission rules that bypass Claudian's permission system
-      settingSources: ctx.settings.loadUserClaudeSettings
-        ? ['user', 'project']
-        : ['project'],
+      // Note: Claude CLI path removed - Ele uses OpenClaw Gateway
+      pathToClaudeCodeExecutable: '',
+      settingSources: ['project'],
       env: {
         ...process.env,
         ...ctx.customEnv,

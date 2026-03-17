@@ -6,7 +6,7 @@ export type AgentPermissionMode = typeof AGENT_PERMISSION_MODES[number];
  * Matches Claude Code's agent format for compatibility.
  */
 export interface AgentDefinition {
-  /** Unique identifier. Namespaced for plugins: "plugin-name:agent-name" */
+  /** Unique identifier. Format: "agent-name" */
   id: string;
 
   /** Display name (from YAML `name` field) */
@@ -26,10 +26,7 @@ export interface AgentDefinition {
   /** Model override. 'inherit' (default) uses parent's model */
   model?: 'sonnet' | 'opus' | 'haiku' | 'inherit';
 
-  source: 'plugin' | 'vault' | 'global' | 'builtin';
-
-  /** Plugin name (only for plugin-sourced agents) */
-  pluginName?: string;
+  source: 'vault' | 'global' | 'builtin';
 
   /** Absolute path to the source .md file (undefined for built-in agents) */
   filePath?: string;

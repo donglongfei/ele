@@ -138,7 +138,7 @@ export class ClaudianService {
   private readyStateListeners = new Set<(ready: boolean) => void>();
 
   // Modular components
-  private sessionManager = new SessionManager();
+  private _sessionManager = new SessionManager();
   private mcpManager: McpServerManager;
 
   private persistentQuery: Query | null = null;
@@ -249,13 +249,13 @@ export class ClaudianService {
     }
 
     // Auto-resolve session ID from sessionManager if not explicitly provided
-    const effectiveSessionId = options?.sessionId ?? this.sessionManager.getSessionId() ?? undefined;
+    const effectiveSessionId = options?.sessionId ?? this._sessionManager.getSessionId() ?? undefined;
     const externalContextPaths = options?.externalContextPaths ?? this.currentExternalContextPaths;
 
     // Case 1: Not running → try to start
     if (!this.persistentQuery) {
       if (!vaultPath) return false;
-      const cliPath = this.plugin.getResolvedClaudeCliPath();
+      const cliPath = ""; // Removed: Ele uses OpenClaw Gateway
       if (!cliPath) return false;
       await this.startPersistentQuery(vaultPath, cliPath, effectiveSessionId, externalContextPaths);
       return true;
@@ -266,7 +266,7 @@ export class ClaudianService {
     if (options?.force) {
       this.closePersistentQuery('forced restart', { preserveHandlers: options.preserveHandlers });
       if (!vaultPath) return false;
-      const cliPath = this.plugin.getResolvedClaudeCliPath();
+      const cliPath = ""; // Removed: Ele uses OpenClaw Gateway
       if (!cliPath) return false;
       await this.startPersistentQuery(vaultPath, cliPath, effectiveSessionId, externalContextPaths);
       return true;
@@ -275,7 +275,7 @@ export class ClaudianService {
     // Case 3: Check if config changed → restart if needed
     // We need vaultPath and cliPath to build config for comparison
     if (!vaultPath) return false;
-    const cliPath = this.plugin.getResolvedClaudeCliPath();
+    const cliPath = ""; // Removed: Ele uses OpenClaw Gateway
     if (!cliPath) return false;
 
     const newConfig = this.buildPersistentQueryConfig(vaultPath, cliPath, externalContextPaths);
@@ -283,7 +283,7 @@ export class ClaudianService {
       // Close FIRST, then try to start new one (allows fallback if CLI unavailable)
       this.closePersistentQuery('config changed', { preserveHandlers: options?.preserveHandlers });
       // Re-check CLI path as it might have changed during close
-      const cliPathAfterClose = this.plugin.getResolvedClaudeCliPath();
+      const cliPathAfterClose = ""; // Removed: Ele uses OpenClaw Gateway
       if (cliPathAfterClose) {
         await this.startPersistentQuery(vaultPath, cliPathAfterClose, effectiveSessionId, externalContextPaths);
         return true;
@@ -316,7 +316,7 @@ export class ClaudianService {
 
     if (resumeSessionId) {
       this.messageChannel.setSessionId(resumeSessionId);
-      this.sessionManager.setSessionId(resumeSessionId, this.plugin.settings.model);
+      this._sessionManager.setSessionId(resumeSessionId, this.plugin.settings.model);
     }
 
     this.queryAbortController = new AbortController();
@@ -465,7 +465,7 @@ export class ClaudianService {
       customEnv,
       enhancedPath,
       mcpManager: this.mcpManager,
-      pluginManager: this.plugin.pluginManager,
+      // Note: PluginManager removed - Ele uses OpenClaw Gateway, not Claude CLI plugins
     };
   }
 
@@ -581,7 +581,7 @@ export class ClaudianService {
               // If restart failed due to session expiration, invalidate session
               // so next query triggers noSessionButHasHistory → history rebuild
               if (isSessionExpiredError(restartError)) {
-                this.sessionManager.invalidateSession();
+                this._sessionManager.invalidateSession();
               }
               handler.onError(errorInstance);
               return;
@@ -602,7 +602,7 @@ export class ClaudianService {
               // If restart failed due to session expiration, invalidate session
               // so next query triggers noSessionButHasHistory → history rebuild
               if (isSessionExpiredError(restartError)) {
-                this.sessionManager.invalidateSession();
+                this._sessionManager.invalidateSession();
               }
               // Restart failed - next query will start fresh.
             }
@@ -651,9 +651,9 @@ export class ClaudianService {
       if (isSessionInitEvent(event)) {
         // Fork: suppress needsHistoryRebuild since SDK returns a different session ID by design
         const wasFork = this.pendingForkSession;
-        this.sessionManager.captureSession(event.sessionId);
+        this._sessionManager.captureSession(event.sessionId);
         if (wasFork) {
-          this.sessionManager.clearHistoryRebuild();
+          this._sessionManager.clearHistoryRebuild();
           this.pendingForkSession = false;
         }
         this.messageChannel?.setSessionId(event.sessionId);
@@ -683,7 +683,7 @@ export class ClaudianService {
         if (handler) {
           // Add sessionId to usage chunks (consistent with cold-start path)
           if (event.type === 'usage') {
-            handler.onChunk({ ...event, sessionId: this.sessionManager.getSessionId() });
+            handler.onChunk({ ...event, sessionId: this._sessionManager.getSessionId() });
           } else {
             handler.onChunk(event);
           }
@@ -742,7 +742,7 @@ export class ClaudianService {
       return;
     }
 
-    const resolvedClaudePath = this.plugin.getResolvedClaudeCliPath();
+    const resolvedClaudePath = ""; // Removed: Ele uses OpenClaw Gateway
     if (!resolvedClaudePath) {
       yield { type: 'error', content: 'Claude CLI not found. Please install Claude Code CLI.' };
       return;
@@ -762,20 +762,20 @@ export class ClaudianService {
 
     // Clear interrupted flag - persistent query handles interruption gracefully,
     // no need to force cold-start just because user cancelled previous response
-    if (this.sessionManager.wasInterrupted()) {
-      this.sessionManager.clearInterrupted();
+    if (this._sessionManager.wasInterrupted()) {
+      this._sessionManager.clearInterrupted();
     }
 
     // Session mismatch recovery: SDK returned a different session ID (context lost)
     // Inject history to restore context without forcing cold-start
-    if (this.sessionManager.needsHistoryRebuild() && conversationHistory && conversationHistory.length > 0) {
+    if (this._sessionManager.needsHistoryRebuild() && conversationHistory && conversationHistory.length > 0) {
       const historyContext = buildContextFromHistory(conversationHistory);
       const actualPrompt = stripCurrentNoteContext(prompt);
       promptToSend = buildPromptWithHistoryContext(historyContext, prompt, actualPrompt, conversationHistory);
-      this.sessionManager.clearHistoryRebuild();
+      this._sessionManager.clearHistoryRebuild();
     }
 
-    const noSessionButHasHistory = !this.sessionManager.getSessionId() &&
+    const noSessionButHasHistory = !this._sessionManager.getSessionId() &&
       conversationHistory && conversationHistory.length > 0;
 
     if (noSessionButHasHistory) {
@@ -808,7 +808,7 @@ export class ClaudianService {
         await this.startPersistentQuery(
           vaultPath,
           resolvedClaudePath,
-          this.sessionManager.getSessionId() ?? undefined
+          this._sessionManager.getSessionId() ?? undefined
         );
       }
 
@@ -819,7 +819,7 @@ export class ClaudianService {
           return;
         } catch (error) {
           if (isSessionExpiredError(error) && conversationHistory && conversationHistory.length > 0) {
-            this.sessionManager.invalidateSession();
+            this._sessionManager.invalidateSession();
             const retryRequest = this.buildHistoryRebuildRequest(prompt, conversationHistory);
 
             this.coldStartInProgress = true;
@@ -858,7 +858,7 @@ export class ClaudianService {
       yield* this.queryViaSDK(promptToSend, vaultPath, resolvedClaudePath, images, effectiveQueryOptions);
     } catch (error) {
       if (isSessionExpiredError(error) && conversationHistory && conversationHistory.length > 0) {
-        this.sessionManager.invalidateSession();
+        this._sessionManager.invalidateSession();
         const retryRequest = this.buildHistoryRebuildRequest(prompt, conversationHistory);
 
         try {
@@ -1051,7 +1051,7 @@ export class ClaudianService {
   }
 
   private buildSDKUserMessage(prompt: string, images?: ImageAttachment[]): SDKUserMessage {
-    const sessionId = this.sessionManager.getSessionId() || '';
+    const sessionId = this._sessionManager.getSessionId() || '';
 
     if (!images || images.length === 0) {
       return {
@@ -1111,7 +1111,7 @@ export class ClaudianService {
     if (!this.vaultPath) {
       return;
     }
-    const cliPath = this.plugin.getResolvedClaudeCliPath();
+    const cliPath = ""; // Removed: Ele uses OpenClaw Gateway
     if (!cliPath) {
       return;
     }
@@ -1271,7 +1271,7 @@ export class ClaudianService {
   ): AsyncGenerator<StreamChunk> {
     const selectedModel = queryOptions?.model || this.plugin.settings.model;
 
-    this.sessionManager.setPendingModel(selectedModel);
+    this._sessionManager.setPendingModel(selectedModel);
     this.vaultPath = cwd;
 
     const queryPrompt = this.buildPromptWithImages(prompt, images);
@@ -1289,7 +1289,7 @@ export class ClaudianService {
     const ctx: ColdStartQueryContext = {
       ...baseContext,
       abortController: this.abortController ?? undefined,
-      sessionId: this.sessionManager.getSessionId() ?? undefined,
+      sessionId: this._sessionManager.getSessionId() ?? undefined,
       modelOverride: queryOptions?.model,
       canUseTool: this.createApprovalCallback(),
       hooks,
@@ -1305,7 +1305,7 @@ export class ClaudianService {
     let sawStreamText = false;
     try {
       const response = agentQuery({ prompt: queryPrompt, options });
-      let streamSessionId: string | null = this.sessionManager.getSessionId();
+      let streamSessionId: string | null = this._sessionManager.getSessionId();
 
       for await (const message of response) {
         if (this.isStreamTextEvent(message)) {
@@ -1318,7 +1318,7 @@ export class ClaudianService {
 
         for (const event of transformSDKMessage(message, this.getTransformOptions(selectedModel))) {
           if (isSessionInitEvent(event)) {
-            this.sessionManager.captureSession(event.sessionId);
+            this._sessionManager.captureSession(event.sessionId);
             streamSessionId = event.sessionId;
           } else if (isStreamChunk(event)) {
             if (message.type === 'assistant' && sawStreamText && event.type === 'text') {
@@ -1344,7 +1344,7 @@ export class ClaudianService {
       const msg = error instanceof Error ? error.message : 'Unknown error';
       yield { type: 'error', content: msg };
     } finally {
-      this.sessionManager.clearPendingModel();
+      this._sessionManager.clearPendingModel();
       this.currentAllowedTools = null; // Clear tool restriction after query
     }
 
@@ -1356,7 +1356,7 @@ export class ClaudianService {
 
     if (this.abortController) {
       this.abortController.abort();
-      this.sessionManager.markInterrupted();
+      this._sessionManager.markInterrupted();
     }
 
     // Interrupt persistent query (Phase 1.9)
@@ -1378,7 +1378,7 @@ export class ClaudianService {
     // Reset crash recovery for fresh start
     this.crashRecoveryAttempted = false;
 
-    this.sessionManager.reset();
+    this._sessionManager.reset();
   }
 
   /**
@@ -1397,7 +1397,7 @@ export class ClaudianService {
     this.crashRecoveryAttempted = false;
 
     // Reset session manager to clear any existing session state
-    this.sessionManager.reset();
+    this._sessionManager.reset();
 
     // Get required paths
     const vaultPath = getVaultPath(this.plugin.app);
@@ -1406,7 +1406,7 @@ export class ClaudianService {
       return false;
     }
 
-    const cliPath = this.plugin.getResolvedClaudeCliPath();
+    const cliPath = ""; // Removed: Ele uses OpenClaw Gateway
     if (!cliPath) {
       new Notice('Claude CLI not found. Please install Claude Code CLI.');
       return false;
@@ -1435,12 +1435,12 @@ export class ClaudianService {
   }
 
   getSessionId(): string | null {
-    return this.sessionManager.getSessionId();
+    return this._sessionManager.getSessionId();
   }
 
   /** Consume session invalidation flag for persistence updates. */
   consumeSessionInvalidation(): boolean {
-    return this.sessionManager.consumeInvalidation();
+    return this._sessionManager.consumeInvalidation();
   }
 
   /**
@@ -1485,7 +1485,7 @@ export class ClaudianService {
    * @param externalContextPaths - External context paths for the session (prevents stale contexts)
    */
   setSessionId(id: string | null, externalContextPaths?: string[]): void {
-    const currentId = this.sessionManager.getSessionId();
+    const currentId = this._sessionManager.getSessionId();
     const sessionChanged = currentId !== id;
 
     // Close synchronously when session changes (maintains backwards compatibility)
@@ -1494,7 +1494,7 @@ export class ClaudianService {
       this.crashRecoveryAttempted = false;
     }
 
-    this.sessionManager.setSessionId(id, this.plugin.settings.model);
+    this._sessionManager.setSessionId(id, this.plugin.settings.model);
 
     // Ensure query is ready with the new session ID and external contexts
     // Passing external contexts here prevents stale contexts from previous session

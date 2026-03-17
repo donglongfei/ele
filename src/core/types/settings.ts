@@ -287,10 +287,10 @@ export interface ClaudianSettings {
   // Internationalization
   locale: Locale;  // UI language setting
 
-  // CLI paths
-  claudeCliPath: string;  // Legacy: single CLI path (for backwards compatibility)
-  claudeCliPathsByHost: HostnameCliPaths;  // Per-device paths keyed by hostname (preferred)
-  loadUserClaudeSettings: boolean;  // Load ~/.claude/settings.json (may override permissions)
+  // Deprecated: CLI paths removed - Ele uses OpenClaw Gateway, not Claude CLI
+  // claudeCliPath?: string;  // REMOVED: Not applicable for OpenClaw
+  // claudeCliPathsByHost?: HostnameCliPaths;  // REMOVED: Not applicable for OpenClaw
+  // loadUserClaudeSettings?: boolean;  // REMOVED: Not applicable for OpenClaw
 
   // State (merged from data.json)
   lastClaudeModel?: ClaudeModel;
@@ -363,10 +363,8 @@ export const DEFAULT_SETTINGS: ClaudianSettings = {
   // Internationalization
   locale: 'en',  // Default to English
 
-  // CLI paths
-  claudeCliPath: '',  // Legacy field (empty = not migrated)
-  claudeCliPathsByHost: {},  // Per-device paths keyed by hostname
-  loadUserClaudeSettings: true,  // Default on for compatibility
+  // Deprecated: CLI paths removed - Ele uses OpenClaw Gateway
+  // claudeCliPath, claudeCliPathsByHost, loadUserClaudeSettings removed
 
   lastClaudeModel: 'kimi-k2.5',
   lastCustomModel: '',

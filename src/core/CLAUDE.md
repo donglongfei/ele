@@ -12,13 +12,13 @@ Core modules have **no feature dependencies**. Features depend on core, never th
 | `hooks/` | Security hooks | `SecurityHooks` |
 | `images/` | Image caching | SHA-256 dedup, base64 encoding |
 | `mcp/` | Model Context Protocol | `McpServerManager`, `McpTester` |
-| `plugins/` | Claude Code plugins | `PluginManager` |
+| `skills/` | OpenClaw skills (SKILL.md) | `SkillStorage` |
 | `prompts/` | System prompts | `mainAgent`, `inlineEdit`, `instructionRefine`, `titleGeneration` |
 | `sdk/` | SDK message transform | `transformSDKMessage`, `typeGuards`, `types` |
 | `security/` | Access control | `ApprovalManager` (permission utilities), `BashPathValidator`, `BlocklistChecker` |
 | `storage/` | Persistence layer | `StorageService`, `SessionStorage`, `CCSettingsStorage`, `ClaudianSettingsStorage`, `McpStorage`, `SkillStorage`, `SlashCommandStorage`, `VaultFileAdapter` |
 | `tools/` | Tool utilities | `toolNames` (incl. plan mode tools), `toolIcons`, `toolInput`, `todo` |
-| `types/` | Type definitions | `settings`, `agent`, `mcp`, `chat` (incl. `forkSource?: { sessionId, resumeAt }`), `tools`, `models`, `sdk`, `plugins`, `diff` |
+| `types/` | Type definitions | `settings`, `agent`, `mcp`, `chat` (incl. `forkSource?: { sessionId, resumeAt }`), `tools`, `models`, `sdk`, `diff` |
 
 ## Dependency Rules
 

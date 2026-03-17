@@ -107,14 +107,6 @@ export {
   type ParsedMcpConfig,
 } from './mcp';
 
-// Plugin types
-export {
-  type ClaudianPlugin,
-  type InstalledPluginEntry,
-  type InstalledPluginsFile,
-  type PluginScope,
-} from './plugins';
-
 // Agent types
 export {
   AGENT_PERMISSION_MODES,

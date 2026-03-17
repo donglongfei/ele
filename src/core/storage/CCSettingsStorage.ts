@@ -279,7 +279,7 @@ export class CCSettingsStorage {
 
   /**
    * Get list of plugin IDs that are explicitly enabled.
-   * Used for PluginManager initialization.
+   * Note: Plugin system removed - kept for backward compatibility
    */
   async getExplicitlyEnabledPluginIds(): Promise<string[]> {
     const enabledPlugins = await this.getEnabledPlugins();
