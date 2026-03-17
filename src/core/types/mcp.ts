@@ -36,7 +36,7 @@ export type McpServerConfig =
 export type McpServerType = 'stdio' | 'sse' | 'http';
 
 /** Extended server configuration with Claudian-specific options. */
-export interface ClaudianMcpServer {
+export interface EleMcpServer {
   /** Unique server name (key in mcpServers record). */
   name: string;
   config: McpServerConfig;
@@ -53,10 +53,22 @@ export interface McpConfigFile {
   mcpServers: Record<string, McpServerConfig>;
 }
 
-/** Extended config file with Claudian metadata. */
-export interface ClaudianMcpConfigFile extends McpConfigFile {
+/** Extended config file with Ele metadata. */
+export interface EleMcpConfigFile extends McpConfigFile {
+  _ele?: {
+    /** Per-server Ele-specific settings. */
+    servers: Record<
+      string,
+      {
+        enabled?: boolean;
+        contextSaving?: boolean;
+        disabledTools?: string[];
+        description?: string;
+      }
+    >;
+  };
+  /** Legacy field for migration. */
   _claudian?: {
-    /** Per-server Claudian-specific settings. */
     servers: Record<
       string,
       {
@@ -95,7 +107,7 @@ export function isValidMcpServerConfig(obj: unknown): obj is McpServerConfig {
   return false;
 }
 
-export const DEFAULT_MCP_SERVER: Omit<ClaudianMcpServer, 'name' | 'config'> = {
+export const DEFAULT_MCP_SERVER: Omit<EleMcpServer, 'name' | 'config'> = {
   enabled: true,
   contextSaving: true,
 };

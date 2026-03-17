@@ -1,5 +1,5 @@
 /**
- * ClaudianSettingsStorage - Handles claudian-settings.json read/write.
+ * EleSettingsStorage - Handles claudian-settings.json read/write.
  *
  * Manages the .claude/claudian-settings.json file for Claudian-specific settings.
  * These settings are NOT shared with Claude Code CLI.
@@ -15,7 +15,7 @@
  * - Note: CLI paths removed - Ele uses OpenClaw Gateway
  */
 
-import type { ClaudeModel, ClaudianSettings, PlatformBlockedCommands } from '../types';
+import type { ClaudeModel, EleSettings, PlatformBlockedCommands } from '../types';
 import { DEFAULT_SETTINGS, getDefaultBlockedCommands } from '../types';
 import type { VaultFileAdapter } from './VaultFileAdapter';
 
@@ -26,7 +26,7 @@ export const CLAUDIAN_SETTINGS_PATH = '.claude/claudian-settings.json';
 type SeparatelyLoadedFields = 'slashCommands';
 
 /** Settings stored in .claude/claudian-settings.json. */
-export type StoredClaudianSettings = Omit<ClaudianSettings, SeparatelyLoadedFields>;
+export type StoredEleSettings = Omit<EleSettings, SeparatelyLoadedFields>;
 
 function normalizeCommandList(value: unknown, fallback: string[]): string[] {
   if (!Array.isArray(value)) {
@@ -61,7 +61,7 @@ export function normalizeBlockedCommands(value: unknown): PlatformBlockedCommand
   };
 }
 
-export class ClaudianSettingsStorage {
+export class EleSettingsStorage {
   constructor(private adapter: VaultFileAdapter) { }
 
   /**
@@ -69,7 +69,7 @@ export class ClaudianSettingsStorage {
   * Returns default settings if file doesn't exist.
   * Throws if file exists but cannot be read or parsed.
   */
-  async load(): Promise<StoredClaudianSettings> {
+  async load(): Promise<StoredEleSettings> {
     if (!(await this.adapter.exists(CLAUDIAN_SETTINGS_PATH))) {
       return this.getDefaults();
     }
@@ -85,10 +85,10 @@ export class ClaudianSettingsStorage {
       ...storedWithoutLegacy,
       blockedCommands,
       // Note: CLI paths removed - Ele uses OpenClaw Gateway
-    } as StoredClaudianSettings;
+    } as StoredEleSettings;
   }
 
-  async save(settings: StoredClaudianSettings): Promise<void> {
+  async save(settings: StoredEleSettings): Promise<void> {
     const content = JSON.stringify(settings, null, 2);
     await this.adapter.write(CLAUDIAN_SETTINGS_PATH, content);
   }
@@ -97,7 +97,7 @@ export class ClaudianSettingsStorage {
     return this.adapter.exists(CLAUDIAN_SETTINGS_PATH);
   }
 
-  async update(updates: Partial<StoredClaudianSettings>): Promise<void> {
+  async update(updates: Partial<StoredEleSettings>): Promise<void> {
     const current = await this.load();
     await this.save({ ...current, ...updates });
   }
@@ -157,7 +157,7 @@ export class ClaudianSettingsStorage {
   /**
    * Get default settings (excluding separately loaded fields).
    */
-  private getDefaults(): StoredClaudianSettings {
+  private getDefaults(): StoredEleSettings {
     const {
       slashCommands: _,
       ...defaults

@@ -94,7 +94,7 @@ function createWikilink(
   displayText: string
 ): HTMLElement {
   const link = document.createElement('a');
-  link.className = 'claudian-file-link internal-link';
+  link.className = 'ele-file-link internal-link';
   link.textContent = displayText;
   link.setAttribute('data-href', linkTarget);
   link.setAttribute('href', linkTarget);

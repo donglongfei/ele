@@ -1,7 +1,7 @@
 /**
  * QueryOptionsBuilder - SDK Options Construction
  *
- * Extracts options-building logic from ClaudianService for:
+ * Extracts options-building logic from EleService for:
  * - Persistent query options (warm path)
  * - Cold-start query options
  * - Configuration change detection
@@ -17,7 +17,7 @@ import type {
 
 import type { McpServerManager } from '../mcp';
 import { buildSystemPrompt, type SystemPromptSettings } from '../prompts/mainAgent';
-import type { ClaudianSettings, PermissionMode } from '../types';
+import type { EleSettings, PermissionMode } from '../types';
 import { resolveModelWithBetas, THINKING_BUDGETS } from '../types';
 import { createCustomSpawnFunction } from './customSpawn';
 import {
@@ -29,7 +29,7 @@ import {
 
 /**
  * Context required for building SDK options.
- * Passed to builder methods to avoid direct dependencies on ClaudianService.
+ * Passed to builder methods to avoid direct dependencies on EleService.
  */
 export interface QueryOptionsContext {
   /** Absolute path to the vault root. */
@@ -37,7 +37,7 @@ export interface QueryOptionsContext {
   /** Path to the Claude CLI executable. */
   cliPath: string;
   /** Current plugin settings. */
-  settings: ClaudianSettings;
+  settings: EleSettings;
   /** Parsed environment variables (from settings). */
   customEnv: Record<string, string>;
   /** Enhanced PATH with CLI directories. */
@@ -112,7 +112,7 @@ export class QueryOptionsBuilder {
     if (currentConfig.settingSources !== newConfig.settingSources) return true;
 
 
-    // Note: Permission mode is handled dynamically via setPermissionMode() in ClaudianService.
+    // Note: Permission mode is handled dynamically via setPermissionMode() in EleService.
     // Since allowDangerouslySkipPermissions is always true, both directions work without restart.
 
     // Beta flag presence is determined by show1MModel setting.
@@ -338,7 +338,7 @@ export class QueryOptionsBuilder {
     }
   }
 
-  private static applyExtraArgs(options: Options, settings: ClaudianSettings): void {
+  private static applyExtraArgs(options: Options, settings: EleSettings): void {
     if (settings.enableChrome) {
       options.extraArgs = { ...options.extraArgs, chrome: null };
     }

@@ -30,7 +30,7 @@ import { Notice } from 'obsidian';
 import * as os from 'os';
 import * as path from 'path';
 
-import type ClaudianPlugin from '../../main';
+import type ElePlugin from '../../main';
 import { stripCurrentNoteContext } from '../../utils/context';
 import { getEnhancedPath, getMissingNodeError, parseEnvironmentVariables } from '../../utils/env';
 import { getPathAccessType, getVaultPath } from '../../utils/path';
@@ -125,8 +125,8 @@ export interface EnsureReadyOptions {
   preserveHandlers?: boolean;
 }
 
-export class ClaudianService {
-  private plugin: ClaudianPlugin;
+export class EleService {
+  private plugin: ElePlugin;
   private abortController: AbortController | null = null;
   private approvalCallback: ApprovalCallback | null = null;
   private approvalDismisser: (() => void) | null = null;
@@ -167,7 +167,7 @@ export class ClaudianService {
   // OpenClaw Gateway service for configuration sync
   private openClawService: OpenClawService | null = null;
 
-  constructor(plugin: ClaudianPlugin, mcpManager: McpServerManager) {
+  constructor(plugin: ElePlugin, mcpManager: McpServerManager) {
     this.plugin = plugin;
     this.mcpManager = mcpManager;
     
@@ -1579,7 +1579,7 @@ export class ClaudianService {
       return null;
     }
 
-    const backupRoot = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'claudian-rewind-'));
+    const backupRoot = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'ele-rewind-'));
 
     type BackupEntry =
       | { originalPath: string; existedBefore: false }

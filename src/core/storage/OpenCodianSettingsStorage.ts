@@ -16,7 +16,7 @@
  * - Note: CLI paths removed - Ele uses OpenClaw Gateway
  */
 
-import type { ClaudeModel, ClaudianSettings, PlatformBlockedCommands } from '../types';
+import type { ClaudeModel, EleSettings, PlatformBlockedCommands } from '../types';
 import { DEFAULT_SETTINGS, getDefaultBlockedCommands } from '../types';
 import type { VaultFileAdapter } from './VaultFileAdapter';
 
@@ -30,7 +30,7 @@ export const LEGACY_CLAUDIAN_SETTINGS_PATH = '.claude/claudian-settings.json';
 type SeparatelyLoadedFields = 'slashCommands';
 
 /** Settings stored in .opencode/opencodian-settings.json. */
-export type StoredOpenCodianSettings = Omit<ClaudianSettings, SeparatelyLoadedFields>;
+export type StoredOpenCodianSettings = Omit<EleSettings, SeparatelyLoadedFields>;
 
 function normalizeCommandList(value: unknown, fallback: string[]): string[] {
   if (!Array.isArray(value)) {
@@ -201,6 +201,6 @@ export class OpenCodianSettingsStorage {
  * Legacy export for backwards compatibility.
  * @deprecated Use OpenCodianSettingsStorage instead
  */
-export const ClaudianSettingsStorage = OpenCodianSettingsStorage;
+export const EleSettingsStorage = OpenCodianSettingsStorage;
 export const CLAUDIAN_SETTINGS_PATH = OPENCODIAN_SETTINGS_PATH;
-export type StoredClaudianSettings = StoredOpenCodianSettings;
+export type StoredEleSettings = StoredOpenCodianSettings;

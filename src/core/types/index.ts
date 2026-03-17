@@ -10,8 +10,7 @@ export {
   type SessionMetadata,
   type StreamChunk,
   type UsageInfo,
-  VIEW_TYPE_OPENCODIAN,
-  VIEW_TYPE_CLAUDIAN,  // Legacy alias
+  VIEW_TYPE_ELE,
 } from './chat';
 
 // Model types
@@ -39,7 +38,7 @@ export {
   type ApprovalDecision,
   type CCPermissions,
   type CCSettings,
-  type ClaudianSettings,
+  type EleSettings,
   type CliPlatformKey,
   createPermissionRule,
   DEFAULT_CC_PERMISSIONS,
@@ -93,8 +92,8 @@ export {
 
 // MCP types
 export {
-  type ClaudianMcpConfigFile,
-  type ClaudianMcpServer,
+  type EleMcpConfigFile,
+  type EleMcpServer,
   DEFAULT_MCP_SERVER,
   getMcpServerType,
   isValidMcpServerConfig,

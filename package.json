@@ -1,7 +1,7 @@
 {
-  "name": "opencodian",
+  "name": "ele",
   "version": "0.1.0",
-  "description": "OpenCodian - OpenClaw AI agent embedded in Obsidian sidebar",
+  "description": "Ele - OpenClaw AI agent embedded in Obsidian with Kimi K2.5 backend",
   "main": "main.js",
   "scripts": {
     "postinstall": "node scripts/postinstall.mjs",
@@ -17,15 +17,20 @@
     "version": "node scripts/sync-version.js && git add manifest.json"
   },
   "keywords": [
+    "ele",
     "openclaw",
-    "opencode",
+    "kimi",
     "kimi-k2.5",
     "obsidian",
     "obsidian-plugin",
     "ai-agent"
   ],
-  "author": "Yishen Tu",
+  "author": "Longfei Dong",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/donglongfei/ele.git"
+  },
   "devDependencies": {
     "@types/jest": "^30.0.0",
     "@types/node": "^20.0.0",

@@ -1,7 +1,7 @@
 /**
  * OpenClawService - WebSocket client for OpenClaw Gateway
  *
- * Replaces ClaudianService and Claude Agent SDK with direct WebSocket
+ * Replaces EleService and Claude Agent SDK with direct WebSocket
  * communication to OpenClaw Gateway (running on port 18789).
  *
  * Architecture:
@@ -1147,7 +1147,7 @@ export class OpenClawService {
     this.responseHandlers = [];
   }
 
-  // Callback setters (maintain API compatibility with ClaudianService)
+  // Callback setters (maintain API compatibility with EleService)
 
   setApprovalCallback(callback: ApprovalCallback | null): void {
     this.approvalCallback = callback;

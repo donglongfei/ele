@@ -14,7 +14,7 @@ import { StorageService } from './core/storage';
 import { isSubagentToolName, TOOL_TASK } from './core/tools/toolNames';
 import type {
   ChatMessage,
-  ClaudianSettings,
+  EleSettings,
   Conversation,
   ConversationMeta,
   SlashCommand,
@@ -24,10 +24,10 @@ import {
   DEFAULT_KIMI_MODELS,
   DEFAULT_SETTINGS,
   getHostnameKey,
-  VIEW_TYPE_OPENCODIAN,
-  VIEW_TYPE_CLAUDIAN,  // Legacy support
+  VIEW_TYPE_ELE,
+  VIEW_TYPE_ELE,  // Legacy support
 } from './core/types';
-import { ClaudianView } from './features/chat/ClaudianView';
+import { EleView } from './features/chat/EleView';
 import { type InlineEditContext, InlineEditModal } from './features/inline-edit/ui/InlineEditModal';
 import { OpenCodianSettingTab } from './features/settings/OpenCodianSettings';
 import { setLocale } from './i18n';
@@ -47,8 +47,8 @@ import { ELE_LOGO_SVG, ELE_LOGO_RED_SVG } from './shared/icons/logo';
  * Main plugin class for OpenCodian.
  * Handles plugin lifecycle, settings persistence, and conversation management.
  */
-export default class ClaudianPlugin extends Plugin {
-  settings: ClaudianSettings;
+export default class ElePlugin extends Plugin {
+  settings: EleSettings;
   mcpManager: McpServerManager;
   agentManager: AgentManager;
   storage: StorageService;
@@ -73,8 +73,8 @@ export default class ClaudianPlugin extends Plugin {
 
     // Register view (both constants point to same string for compatibility)
     this.registerView(
-      VIEW_TYPE_OPENCODIAN,
-      (leaf) => new ClaudianView(leaf, this)
+      VIEW_TYPE_ELE,
+      (leaf) => new EleView(leaf, this)
     );
 
     this.addRibbonIcon('ele-logo', 'Open Ele', () => {
@@ -131,10 +131,10 @@ export default class ClaudianPlugin extends Plugin {
       id: 'new-tab',
       name: 'New tab',
       checkCallback: (checking: boolean) => {
-        const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_CLAUDIAN)[0];
+        const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_ELE)[0];
         if (!leaf) return false;
 
-        const view = leaf.view as ClaudianView;
+        const view = leaf.view as EleView;
         const tabManager = view.getTabManager();
         if (!tabManager) return false;
 
@@ -151,10 +151,10 @@ export default class ClaudianPlugin extends Plugin {
       id: 'new-session',
       name: 'New session (in current tab)',
       checkCallback: (checking: boolean) => {
-        const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_CLAUDIAN)[0];
+        const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_ELE)[0];
         if (!leaf) return false;
 
-        const view = leaf.view as ClaudianView;
+        const view = leaf.view as EleView;
         const tabManager = view.getTabManager();
         if (!tabManager) return false;
 
@@ -174,10 +174,10 @@ export default class ClaudianPlugin extends Plugin {
       id: 'close-current-tab',
       name: 'Close current tab',
       checkCallback: (checking: boolean) => {
-        const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_CLAUDIAN)[0];
+        const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_ELE)[0];
         if (!leaf) return false;
 
-        const view = leaf.view as ClaudianView;
+        const view = leaf.view as EleView;
         const tabManager = view.getTabManager();
         if (!tabManager) return false;
 
@@ -208,7 +208,7 @@ export default class ClaudianPlugin extends Plugin {
 
   async activateView() {
     const { workspace } = this.app;
-    let leaf = workspace.getLeavesOfType(VIEW_TYPE_OPENCODIAN)[0];
+    let leaf = workspace.getLeavesOfType(VIEW_TYPE_ELE)[0];
 
     if (!leaf) {
       const newLeaf = this.settings.openInMainTab
@@ -216,7 +216,7 @@ export default class ClaudianPlugin extends Plugin {
         : workspace.getRightLeaf(false);
       if (newLeaf) {
         await newLeaf.setViewState({
-          type: VIEW_TYPE_OPENCODIAN,
+          type: VIEW_TYPE_ELE,
           active: true,
         });
         leaf = newLeaf;
@@ -376,7 +376,7 @@ export default class ClaudianPlugin extends Plugin {
       ...settingsToSave
     } = this.settings;
 
-    await this.storage.saveClaudianSettings(settingsToSave);
+    await this.storage.saveEleSettings(settingsToSave);
   }
 
   /** Updates and persists environment variables, restarting processes to apply changes. */
@@ -1032,25 +1032,25 @@ export default class ClaudianPlugin extends Plugin {
   }
 
   /** Returns the active Claudian view from workspace, if open. */
-  getView(): ClaudianView | null {
-    const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_CLAUDIAN);
+  getView(): EleView | null {
+    const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_ELE);
     if (leaves.length > 0) {
-      return leaves[0].view as ClaudianView;
+      return leaves[0].view as EleView;
     }
     return null;
   }
 
   /** Returns all open OpenCodian views in the workspace. */
-  getAllViews(): ClaudianView[] {
-    const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_OPENCODIAN);
-    return leaves.map(leaf => leaf.view as ClaudianView);
+  getAllViews(): EleView[] {
+    const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_ELE);
+    return leaves.map(leaf => leaf.view as EleView);
   }
 
   /**
    * Checks if a conversation is open in any Claudian view.
    * Returns the view and tab if found, null otherwise.
    */
-  findConversationAcrossViews(conversationId: string): { view: ClaudianView; tabId: string } | null {
+  findConversationAcrossViews(conversationId: string): { view: EleView; tabId: string } | null {
     for (const view of this.getAllViews()) {
       const tabManager = view.getTabManager();
       if (!tabManager) continue;

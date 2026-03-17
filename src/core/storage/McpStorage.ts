@@ -2,14 +2,14 @@
  * McpStorage - Handles .opencode/mcp.json read/write
  *
  * MCP server configurations are stored in OpenClaw-compatible format
- * with optional OpenCodian-specific metadata in _opencodian field.
+ * with optional Ele-specific metadata in _ele field.
  *
  * File format:
  * {
  *   "mcpServers": {
  *     "server-name": { "command": "...", "args": [...] }
  *   },
- *   "_opencodian": {
+ *   "_ele": {
  *     "servers": {
  *       "server-name": { "enabled": true, "contextSaving": true, "disabledTools": ["tool"], "description": "..." }
  *     }
@@ -20,8 +20,8 @@
  */
 
 import type {
-  ClaudianMcpConfigFile,
-  ClaudianMcpServer,
+  EleMcpConfigFile,
+  EleMcpServer,
   McpServerConfig,
   ParsedMcpConfig,
 } from '../types';
@@ -37,7 +37,7 @@ export const LEGACY_MCP_CONFIG_PATH = '.claude/mcp.json';
 export class McpStorage {
   constructor(private adapter: VaultFileAdapter) {}
 
-  async load(): Promise<ClaudianMcpServer[]> {
+  async load(): Promise<EleMcpServer[]> {
     let path = MCP_CONFIG_PATH;
     let shouldMigrate = false;
 
@@ -54,18 +54,18 @@ export class McpStorage {
       }
 
       const content = await this.adapter.read(path);
-      const file = JSON.parse(content) as ClaudianMcpConfigFile;
+      const file = JSON.parse(content) as EleMcpConfigFile;
 
       if (!file.mcpServers || typeof file.mcpServers !== 'object') {
         return [];
       }
 
-      // Check both _opencodian and _claudian (legacy) metadata
-      const opencodianMeta = file._opencodian?.servers ?? {};
+      // Check both _ele and _claudian (legacy) metadata
+      const eleMeta = file._ele?.servers ?? {};
       const claudianMeta = file._claudian?.servers ?? {};
-      const metadataSource = Object.keys(opencodianMeta).length > 0 ? opencodianMeta : claudianMeta;
+      const metadataSource = Object.keys(eleMeta).length > 0 ? eleMeta : claudianMeta;
 
-      const servers: ClaudianMcpServer[] = [];
+      const servers: EleMcpServer[] = [];
 
       for (const [name, config] of Object.entries(file.mcpServers)) {
         if (!isValidMcpServerConfig(config)) {
@@ -100,9 +100,9 @@ export class McpStorage {
     }
   }
 
-  async save(servers: ClaudianMcpServer[]): Promise<void> {
+  async save(servers: EleMcpServer[]): Promise<void> {
     const mcpServers: Record<string, McpServerConfig> = {};
-    const opencodianServers: Record<
+    const eleServers: Record<
       string,
       { enabled?: boolean; contextSaving?: boolean; disabledTools?: string[]; description?: string }
     > = {};
@@ -110,7 +110,7 @@ export class McpStorage {
     for (const server of servers) {
       mcpServers[server.name] = server.config;
 
-      // Only store OpenCodian metadata if different from defaults
+      // Only store Ele metadata if different from defaults
       const meta: {
         enabled?: boolean;
         contextSaving?: boolean;
@@ -135,14 +135,14 @@ export class McpStorage {
       }
 
       if (Object.keys(meta).length > 0) {
-        opencodianServers[server.name] = meta;
+        eleServers[server.name] = meta;
       }
     }
 
-    const file: ClaudianMcpConfigFile = {
+    const file: EleMcpConfigFile = {
       mcpServers,
-      _opencodian: Object.keys(opencodianServers).length > 0
-        ? { servers: opencodianServers }
+      _ele: Object.keys(eleServers).length > 0
+        ? { servers: eleServers }
         : undefined,
     };
 

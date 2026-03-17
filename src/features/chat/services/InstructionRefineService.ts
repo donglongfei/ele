@@ -2,17 +2,17 @@
 // Original functionality requires @anthropic-ai/claude-agent-sdk
 
 import { type InstructionRefineResult } from '../../../core/types';
-import type ClaudianPlugin from '../../../main';
+import type ElePlugin from '../../../main';
 
 export type RefineProgressCallback = (update: InstructionRefineResult) => void;
 
 export class InstructionRefineService {
-  private plugin: ClaudianPlugin;
+  private plugin: ElePlugin;
   private abortController: AbortController | null = null;
   private sessionId: string | null = null;
   private existingInstructions: string = '';
 
-  constructor(plugin: ClaudianPlugin) {
+  constructor(plugin: ElePlugin) {
     this.plugin = plugin;
   }
 

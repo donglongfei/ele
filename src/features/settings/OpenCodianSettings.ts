@@ -6,10 +6,10 @@ import { getCurrentPlatformKey } from '../../core/types';
 import { DEFAULT_KIMI_MODELS } from '../../core/types/models';
 import { getAvailableLocales, getLocaleDisplayName, setLocale, t } from '../../i18n';
 import type { Locale, TranslationKey } from '../../i18n/types';
-import type ClaudianPlugin from '../../main';
+import type ElePlugin from '../../main';
 import { formatContextLimit, getCustomModelIds, getModelsFromEnvironment, parseContextLimit, parseEnvironmentVariables } from '../../utils/env';
 
-import { ClaudianView } from '../chat/ClaudianView';
+import { EleView } from '../chat/EleView';
 import { buildNavMappingText, parseNavMappings } from './keyboardNavigation';
 import { AgentSettings } from './ui/AgentSettings';
 import { EnvSnippetManager } from './ui/EnvSnippetManager';
@@ -75,10 +75,10 @@ function addHotkeySettingRow(
 }
 
 export class OpenCodianSettingTab extends PluginSettingTab {
-  plugin: ClaudianPlugin;
+  plugin: ElePlugin;
   private contextLimitsContainer: HTMLElement | null = null;
 
-  constructor(app: App, plugin: ClaudianPlugin) {
+  constructor(app: App, plugin: ElePlugin) {
     super(app, plugin);
     this.plugin = plugin;
   }
@@ -165,7 +165,7 @@ export class OpenCodianSettingTab extends PluginSettingTab {
     // Show device pairing status
     const deviceToken = this.plugin.settings.openClawDeviceToken;
     if (deviceToken) {
-      const pairingStatus = containerEl.createDiv({ cls: 'claudian-pairing-status' });
+      const pairingStatus = containerEl.createDiv({ cls: 'ele-pairing-status' });
       pairingStatus.style.marginTop = '-0.5em';
       pairingStatus.style.marginBottom = '1em';
       pairingStatus.style.fontSize = '0.9em';
@@ -362,7 +362,7 @@ export class OpenCodianSettingTab extends PluginSettingTab {
 
             // Update all views' layouts immediately
             for (const leaf of this.plugin.app.workspace.getLeavesOfType('opencodian-view')) {
-              if (leaf.view instanceof ClaudianView) {
+              if (leaf.view instanceof EleView) {
                 leaf.view.updateLayoutForPosition();
               }
             }
@@ -611,7 +611,7 @@ export class OpenCodianSettingTab extends PluginSettingTab {
             this.plugin.settings.show1MModel = value;
             await this.plugin.saveSettings();
 
-            const view = this.plugin.app.workspace.getLeavesOfType('opencodian-view')[0]?.view as ClaudianView | undefined;
+            const view = this.plugin.app.workspace.getLeavesOfType('opencodian-view')[0]?.view as EleView | undefined;
             view?.refreshModelSelector();
           })
       );
@@ -785,7 +785,7 @@ export class OpenCodianSettingTab extends PluginSettingTab {
     containerEl.style.marginBottom = '1em';
     containerEl.style.fontSize = '0.9em';
 
-    const statusEl = containerEl.createDiv({ cls: 'claudian-gateway-status-indicator' });
+    const statusEl = containerEl.createDiv({ cls: 'ele-gateway-status-indicator' });
 
     // Show checking status
     statusEl.innerHTML = '🔄 <span>Checking Gateway connection...</span>';

@@ -1,9 +1,9 @@
 /* Model selector */
-.claudian-model-selector {
+.ele-model-selector {
   position: relative;
 }
 
-.claudian-model-btn {
+.ele-model-btn {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -15,25 +15,25 @@
   transition: color 0.2s ease;
 }
 
-.claudian-model-btn.ready {
-  color: var(--claudian-brand);
+.ele-model-btn.ready {
+  color: var(--ele-brand);
 }
 
-.claudian-model-label {
+.ele-model-label {
   font-weight: 500;
 }
 
-.claudian-model-chevron {
+.ele-model-chevron {
   display: flex;
   align-items: center;
 }
 
-.claudian-model-chevron svg {
+.ele-model-chevron svg {
   width: 12px;
   height: 12px;
 }
 
-.claudian-model-dropdown {
+.ele-model-dropdown {
   position: absolute;
   bottom: 100%;
   left: 0;
@@ -53,12 +53,12 @@
   transition: opacity 0.15s ease, visibility 0.15s ease;
 }
 
-.claudian-model-selector:hover .claudian-model-dropdown {
+.ele-model-selector:hover .ele-model-dropdown {
   opacity: 1;
   visibility: visible;
 }
 
-.claudian-model-option {
+.ele-model-option {
   padding: 4px 8px;
   cursor: pointer;
   font-size: 12px;
@@ -68,13 +68,13 @@
   white-space: nowrap;
 }
 
-.claudian-model-option:hover {
+.ele-model-option:hover {
   background: var(--background-modifier-hover);
   color: var(--text-normal);
 }
 
-.claudian-model-option.selected {
-  background: rgba(var(--claudian-brand-rgb), 0.15);
-  color: var(--claudian-brand);
+.ele-model-option.selected {
+  background: rgba(var(--ele-brand-rgb), 0.15);
+  color: var(--ele-brand);
   font-weight: 500;
 }

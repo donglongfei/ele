@@ -1,5 +1,5 @@
 /**
- * Types and constants for the ClaudianService module.
+ * Types and constants for the EleService module.
  */
 
 import type { SDKMessage, SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';

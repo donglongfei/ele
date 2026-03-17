@@ -1,7 +1,7 @@
 // Stubbed out - Claude SDK not available in Ele build
 // Original functionality requires @anthropic-ai/claude-agent-sdk
 
-import type ClaudianPlugin from '../../../main';
+import type ElePlugin from '../../../main';
 
 export type TitleGenerationResult =
   | { success: true; title: string }
@@ -13,10 +13,10 @@ export type TitleGenerationCallback = (
 ) => Promise<void>;
 
 export class TitleGenerationService {
-  private plugin: ClaudianPlugin;
+  private plugin: ElePlugin;
   private activeGenerations: Map<string, AbortController> = new Map();
 
-  constructor(plugin: ClaudianPlugin) {
+  constructor(plugin: ElePlugin) {
     this.plugin = plugin;
   }
 

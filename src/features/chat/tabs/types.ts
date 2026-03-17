@@ -1,6 +1,6 @@
 import type { Component, WorkspaceLeaf } from 'obsidian';
 
-import type { ClaudianService } from '../../../core/agent';
+import type { EleService } from '../../../core/agent';
 import type { SlashCommandDropdown } from '../../../shared/components/SlashCommandDropdown';
 import type {
   BrowserSelectionController,
@@ -35,7 +35,7 @@ import type { NavigationSidebar } from '../ui';
  * Default number of tabs allowed.
  *
  * Set to 3 to balance usability with resource usage:
- * - Each tab has its own ClaudianService and persistent query
+ * - Each tab has its own EleService and persistent query
  * - More tabs = more memory and potential SDK processes
  * - 3 tabs allows multi-tasking without excessive overhead
  */
@@ -65,9 +65,9 @@ export const TEXTAREA_MIN_MAX_HEIGHT = 150;
 export const TEXTAREA_MAX_HEIGHT_PERCENT = 0.55;
 
 /**
- * Minimal interface for the ClaudianView methods used by TabManager and Tab.
+ * Minimal interface for the EleView methods used by TabManager and Tab.
  * Extends Component for Obsidian integration (event handling, cleanup).
- * Avoids circular dependency by not importing ClaudianView directly.
+ * Avoids circular dependency by not importing EleView directly.
  */
 export interface TabManagerViewHost extends Component {
   /** Reference to the workspace leaf for revealing the view. */
@@ -179,8 +179,8 @@ export interface TabData {
   /** Conversation ID bound to this tab (null for new/empty tabs). */
   conversationId: string | null;
 
-  /** Per-tab ClaudianService instance for independent streaming. */
-  service: ClaudianService | null;
+  /** Per-tab EleService instance for independent streaming. */
+  service: EleService | null;
 
   /** Whether the service has been initialized (lazy start). */
   serviceInitialized: boolean;

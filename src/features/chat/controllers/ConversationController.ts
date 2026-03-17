@@ -1,9 +1,9 @@
 import { Notice, setIcon } from 'obsidian';
 
-import type { ClaudianService } from '../../../core/agent';
+import type { EleService } from '../../../core/agent';
 import type { Conversation } from '../../../core/types';
 import { t } from '../../../i18n';
-import type ClaudianPlugin from '../../../main';
+import type ElePlugin from '../../../main';
 import { confirm } from '../../../shared/modals/ConfirmModal';
 import { cleanupThinkingBlock } from '../rendering';
 import type { MessageRenderer } from '../rendering/MessageRenderer';
@@ -20,7 +20,7 @@ export interface ConversationCallbacks {
 }
 
 export interface ConversationControllerDeps {
-  plugin: ClaudianPlugin;
+  plugin: ElePlugin;
   state: ChatState;
   renderer: MessageRenderer;
   subagentManager: SubagentManager;
@@ -36,7 +36,7 @@ export interface ConversationControllerDeps {
   clearQueuedMessage: () => void;
   getTitleGenerationService: () => TitleGenerationService | null;
   getStatusPanel: () => StatusPanel | null;
-  getAgentService?: () => ClaudianService | null;
+  getAgentService?: () => EleService | null;
 }
 
 type SaveOptions = {
@@ -52,7 +52,7 @@ export class ConversationController {
     this.callbacks = callbacks;
   }
 
-  private getAgentService(): ClaudianService | null {
+  private getAgentService(): EleService | null {
     return this.deps.getAgentService?.() ?? null;
   }
 
@@ -135,8 +135,8 @@ export class ConversationController {
       messagesEl.empty();
 
       // Recreate welcome element first (before StatusPanel for consistent ordering)
-      const welcomeEl = messagesEl.createDiv({ cls: 'claudian-welcome' });
-      welcomeEl.createDiv({ cls: 'claudian-welcome-greeting', text: this.getGreeting() });
+      const welcomeEl = messagesEl.createDiv({ cls: 'ele-welcome' });
+      welcomeEl.createDiv({ cls: 'ele-welcome-greeting', text: this.getGreeting() });
       this.deps.setWelcomeEl(welcomeEl);
 
       // Remount StatusPanel to restore state for new conversation
@@ -606,14 +606,14 @@ export class ConversationController {
 
     container.empty();
 
-    const dropdownHeader = container.createDiv({ cls: 'claudian-history-header' });
+    const dropdownHeader = container.createDiv({ cls: 'ele-history-header' });
     dropdownHeader.createSpan({ text: 'Conversations' });
 
-    const list = container.createDiv({ cls: 'claudian-history-list' });
+    const list = container.createDiv({ cls: 'ele-history-list' });
     const allConversations = plugin.getConversationList();
 
     if (allConversations.length === 0) {
-      list.createDiv({ cls: 'claudian-history-empty', text: 'No conversations' });
+      list.createDiv({ cls: 'ele-history-empty', text: 'No conversations' });
       return;
     }
 
@@ -625,17 +625,17 @@ export class ConversationController {
     for (const conv of conversations) {
       const isCurrent = conv.id === state.currentConversationId;
       const item = list.createDiv({
-        cls: `claudian-history-item${isCurrent ? ' active' : ''}`,
+        cls: `ele-history-item${isCurrent ? ' active' : ''}`,
       });
 
-      const iconEl = item.createDiv({ cls: 'claudian-history-item-icon' });
+      const iconEl = item.createDiv({ cls: 'ele-history-item-icon' });
       setIcon(iconEl, isCurrent ? 'message-square-dot' : 'message-square');
 
-      const content = item.createDiv({ cls: 'claudian-history-item-content' });
-      const titleEl = content.createDiv({ cls: 'claudian-history-item-title', text: conv.title });
+      const content = item.createDiv({ cls: 'ele-history-item-content' });
+      const titleEl = content.createDiv({ cls: 'ele-history-item-title', text: conv.title });
       titleEl.setAttribute('title', conv.title);
       content.createDiv({
-        cls: 'claudian-history-item-date',
+        cls: 'ele-history-item-date',
         text: isCurrent ? 'Current session' : this.formatDate(conv.lastResponseAt ?? conv.createdAt),
       });
 
@@ -650,15 +650,15 @@ export class ConversationController {
         });
       }
 
-      const actions = item.createDiv({ cls: 'claudian-history-item-actions' });
+      const actions = item.createDiv({ cls: 'ele-history-item-actions' });
 
       // Show regenerate button if title generation failed, or loading indicator if pending
       if (conv.titleGenerationStatus === 'pending') {
-        const loadingEl = actions.createEl('span', { cls: 'claudian-action-btn claudian-action-loading' });
+        const loadingEl = actions.createEl('span', { cls: 'ele-action-btn claudian-action-loading' });
         setIcon(loadingEl, 'loader-2');
         loadingEl.setAttribute('aria-label', 'Generating title...');
       } else if (conv.titleGenerationStatus === 'failed') {
-        const regenerateBtn = actions.createEl('button', { cls: 'claudian-action-btn' });
+        const regenerateBtn = actions.createEl('button', { cls: 'ele-action-btn' });
         setIcon(regenerateBtn, 'refresh-cw');
         regenerateBtn.setAttribute('aria-label', 'Regenerate title');
         regenerateBtn.addEventListener('click', async (e) => {
@@ -671,7 +671,7 @@ export class ConversationController {
         });
       }
 
-      const renameBtn = actions.createEl('button', { cls: 'claudian-action-btn' });
+      const renameBtn = actions.createEl('button', { cls: 'ele-action-btn' });
       setIcon(renameBtn, 'pencil');
       renameBtn.setAttribute('aria-label', 'Rename');
       renameBtn.addEventListener('click', (e) => {
@@ -679,7 +679,7 @@ export class ConversationController {
         this.showRenameInput(item, conv.id, conv.title);
       });
 
-      const deleteBtn = actions.createEl('button', { cls: 'claudian-action-btn claudian-delete-btn' });
+      const deleteBtn = actions.createEl('button', { cls: 'ele-action-btn claudian-delete-btn' });
       setIcon(deleteBtn, 'trash-2');
       deleteBtn.setAttribute('aria-label', 'Delete');
       deleteBtn.addEventListener('click', async (e) => {
@@ -706,7 +706,7 @@ export class ConversationController {
 
     const input = document.createElement('input');
     input.type = 'text';
-    input.className = 'claudian-rename-input';
+    input.className = 'ele-rename-input';
     input.value = currentTitle;
 
     titleEl.replaceWith(input);
@@ -833,7 +833,7 @@ export class ConversationController {
 
     // Only add greeting if not already present
     if (!welcomeEl.querySelector('.claudian-welcome-greeting')) {
-      welcomeEl.createDiv({ cls: 'claudian-welcome-greeting', text: this.getGreeting() });
+      welcomeEl.createDiv({ cls: 'ele-welcome-greeting', text: this.getGreeting() });
     }
 
     this.updateWelcomeVisibility();
@@ -919,12 +919,12 @@ export class ConversationController {
   }
 
   // ============================================
-  // History Dropdown Rendering (for ClaudianView)
+  // History Dropdown Rendering (for EleView)
   // ============================================
 
   /**
    * Renders the history dropdown content to a provided container.
-   * Used by ClaudianView to render the dropdown with custom selection callback.
+   * Used by EleView to render the dropdown with custom selection callback.
    */
   renderHistoryDropdown(
     container: HTMLElement,

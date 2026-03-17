@@ -37,7 +37,7 @@ import { CC_SETTINGS_PATH, CCSettingsStorage, isLegacyPermissionsFormat } from '
 import {
   OpenCodianSettingsStorage,
   normalizeBlockedCommands,
-  type StoredClaudianSettings,
+  type StoredEleSettings,
   type StoredOpenCodianSettings,
 } from './OpenCodianSettingsStorage';
 import { McpStorage } from './McpStorage';
@@ -234,21 +234,21 @@ export class StorageService {
       }
     }
 
-    const claudianFields: Partial<StoredClaudianSettings> = {
+    const claudianFields: Partial<StoredEleSettings> = {
       userName: oldSettings.userName ?? DEFAULT_SETTINGS.userName,
       enableBlocklist: oldSettings.enableBlocklist ?? DEFAULT_SETTINGS.enableBlocklist,
       blockedCommands: normalizeBlockedCommands(oldSettings.blockedCommands),
       model: (oldSettings.model as ClaudeModel) ?? DEFAULT_SETTINGS.model,
-      thinkingBudget: (oldSettings.thinkingBudget as StoredClaudianSettings['thinkingBudget']) ?? DEFAULT_SETTINGS.thinkingBudget,
-      permissionMode: (oldSettings.permissionMode as StoredClaudianSettings['permissionMode']) ?? DEFAULT_SETTINGS.permissionMode,
+      thinkingBudget: (oldSettings.thinkingBudget as StoredEleSettings['thinkingBudget']) ?? DEFAULT_SETTINGS.thinkingBudget,
+      permissionMode: (oldSettings.permissionMode as StoredEleSettings['permissionMode']) ?? DEFAULT_SETTINGS.permissionMode,
       excludedTags: oldSettings.excludedTags ?? DEFAULT_SETTINGS.excludedTags,
       mediaFolder: oldSettings.mediaFolder ?? DEFAULT_SETTINGS.mediaFolder,
       environmentVariables, // Merged from both sources
-      envSnippets: oldSettings.envSnippets as StoredClaudianSettings['envSnippets'] ?? DEFAULT_SETTINGS.envSnippets,
+      envSnippets: oldSettings.envSnippets as StoredEleSettings['envSnippets'] ?? DEFAULT_SETTINGS.envSnippets,
       systemPrompt: oldSettings.systemPrompt ?? DEFAULT_SETTINGS.systemPrompt,
       allowedExportPaths: oldSettings.allowedExportPaths ?? DEFAULT_SETTINGS.allowedExportPaths,
       persistentExternalContextPaths: DEFAULT_SETTINGS.persistentExternalContextPaths,
-      keyboardNavigation: oldSettings.keyboardNavigation as StoredClaudianSettings['keyboardNavigation'] ?? DEFAULT_SETTINGS.keyboardNavigation,
+      keyboardNavigation: oldSettings.keyboardNavigation as StoredEleSettings['keyboardNavigation'] ?? DEFAULT_SETTINGS.keyboardNavigation,
       // Note: CLI paths removed - Ele uses OpenClaw Gateway
       // claudeCliPath, claudeCliPathsByHost, loadUserClaudeSettings deprecated
       enableAutoTitleGeneration: oldSettings.enableAutoTitleGeneration ?? DEFAULT_SETTINGS.enableAutoTitleGeneration,
@@ -259,7 +259,7 @@ export class StorageService {
     };
 
     // Save Claudian settings FIRST (before stripping from settings.json)
-    await this.claudianSettings.save(claudianFields as StoredClaudianSettings);
+    await this.claudianSettings.save(claudianFields as StoredEleSettings);
 
     // Verify Claudian settings were saved
     const savedClaudian = await this.claudianSettings.load();
@@ -425,15 +425,15 @@ export class StorageService {
     return this.ccSettings.removeRule(createPermissionRule(rule));
   }
 
-  async updateClaudianSettings(updates: Partial<StoredClaudianSettings>): Promise<void> {
+  async updateEleSettings(updates: Partial<StoredEleSettings>): Promise<void> {
     return this.claudianSettings.update(updates);
   }
 
-  async saveClaudianSettings(settings: StoredClaudianSettings): Promise<void> {
+  async saveEleSettings(settings: StoredEleSettings): Promise<void> {
     return this.claudianSettings.save(settings);
   }
 
-  async loadClaudianSettings(): Promise<StoredClaudianSettings> {
+  async loadEleSettings(): Promise<StoredEleSettings> {
     return this.claudianSettings.load();
   }
 

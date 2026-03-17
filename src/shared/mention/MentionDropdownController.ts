@@ -63,11 +63,11 @@ export class MentionDropdownController {
     this.fixed = options.fixed ?? false;
 
     this.dropdown = new SelectableDropdown<MentionItem>(this.containerEl, {
-      listClassName: 'claudian-mention-dropdown',
-      itemClassName: 'claudian-mention-item',
-      emptyClassName: 'claudian-mention-empty',
+      listClassName: 'ele-mention-dropdown',
+      itemClassName: 'ele-mention-item',
+      emptyClassName: 'ele-mention-empty',
       fixed: this.fixed,
-      fixedClassName: 'claudian-mention-dropdown-fixed',
+      fixedClassName: 'ele-mention-dropdown-fixed',
     });
   }
 
@@ -409,7 +409,7 @@ export class MentionDropdownController {
         return undefined;
       },
       renderItem: (item, itemEl) => {
-        const iconEl = itemEl.createSpan({ cls: 'claudian-mention-icon' });
+        const iconEl = itemEl.createSpan({ cls: 'ele-mention-icon' });
         if (item.type === 'mcp-server') {
           iconEl.innerHTML = MCP_ICON_SVG;
         } else if (item.type === 'folder') {
@@ -424,41 +424,41 @@ export class MentionDropdownController {
           setIcon(iconEl, 'file-text');
         }
 
-        const textEl = itemEl.createSpan({ cls: 'claudian-mention-text' });
+        const textEl = itemEl.createSpan({ cls: 'ele-mention-text' });
 
         if (item.type === 'mcp-server') {
-          const nameEl = textEl.createSpan({ cls: 'claudian-mention-name' });
+          const nameEl = textEl.createSpan({ cls: 'ele-mention-name' });
           nameEl.setText(`@${item.name}`);
         } else if (item.type === 'agent-folder') {
           const nameEl = textEl.createSpan({
-            cls: 'claudian-mention-name claudian-mention-name-agent-folder',
+            cls: 'ele-mention-name claudian-mention-name-agent-folder',
           });
           nameEl.setText(`@${item.name}/`);
         } else if (item.type === 'agent') {
-          const nameEl = textEl.createSpan({ cls: 'claudian-mention-name claudian-mention-name-agent' });
+          const nameEl = textEl.createSpan({ cls: 'ele-mention-name claudian-mention-name-agent' });
           // Show ID (which is namespaced for plugin agents) for consistency with inserted text
           nameEl.setText(`@${item.id}`);
           if (item.description) {
-            const descEl = textEl.createSpan({ cls: 'claudian-mention-agent-desc' });
+            const descEl = textEl.createSpan({ cls: 'ele-mention-agent-desc' });
             descEl.setText(item.description);
           }
         } else if (item.type === 'context-folder') {
           const nameEl = textEl.createSpan({
-            cls: 'claudian-mention-name claudian-mention-name-folder',
+            cls: 'ele-mention-name claudian-mention-name-folder',
           });
           nameEl.setText(`@${item.name}/`);
         } else if (item.type === 'context-file') {
           const nameEl = textEl.createSpan({
-            cls: 'claudian-mention-name claudian-mention-name-context',
+            cls: 'ele-mention-name claudian-mention-name-context',
           });
           nameEl.setText(item.name);
         } else if (item.type === 'folder') {
           const nameEl = textEl.createSpan({
-            cls: 'claudian-mention-name claudian-mention-name-folder',
+            cls: 'ele-mention-name claudian-mention-name-folder',
           });
           nameEl.setText(`@${item.path}/`);
         } else {
-          const pathEl = textEl.createSpan({ cls: 'claudian-mention-path' });
+          const pathEl = textEl.createSpan({ cls: 'ele-mention-path' });
           pathEl.setText(item.path || item.name);
         }
       },

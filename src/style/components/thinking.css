@@ -1,22 +1,22 @@
-.claudian-thinking {
-  color: var(--claudian-brand);
+.ele-thinking {
+  color: var(--ele-brand);
   font-style: italic;
   padding: 4px 0;
   text-align: start;
   animation: thinking-pulse 1.5s ease-in-out infinite;
 }
 
-.claudian-thinking.claudian-thinking--compact {
-  color: var(--claudian-compact);
+.ele-thinking.ele-thinking--compact {
+  color: var(--ele-compact);
 }
 
-.claudian-thinking-hint {
+.ele-thinking-hint {
   color: var(--text-muted);
   font-style: normal;
   font-variant-numeric: tabular-nums;
 }
 
-.claudian-thinking-block {
+.ele-thinking-block {
   margin: 8px 0;
   border: 1px solid var(--background-modifier-border);
   border-radius: 8px;
@@ -24,23 +24,23 @@
   padding: 8px 12px;
 }
 
-.claudian-text-block+.claudian-thinking-block {
+.ele-text-block+.ele-thinking-block {
   margin-top: 8px;
 }
 
-.claudian-thinking-block+.claudian-text-block {
+.ele-thinking-block+.ele-text-block {
   margin-top: 8px;
 }
 
-.claudian-thinking-block+.claudian-tool-call {
+.ele-thinking-block+.ele-tool-call {
   margin-top: 8px;
 }
 
-.claudian-tool-call+.claudian-thinking-block {
+.ele-tool-call+.ele-thinking-block {
   margin-top: 8px;
 }
 
-.claudian-thinking-header {
+.ele-thinking-header {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -50,11 +50,11 @@
   user-select: none;
 }
 
-.claudian-thinking-header:hover {
+.ele-thinking-header:hover {
   opacity: 0.8;
 }
 
-.claudian-thinking-arrow {
+.ele-thinking-arrow {
   font-size: 10px;
   color: var(--text-muted);
   transition: transform 0.2s ease;
@@ -63,19 +63,19 @@
   text-align: center;
 }
 
-.claudian-thinking-block.expanded .claudian-thinking-arrow {
+.ele-thinking-block.expanded .ele-thinking-arrow {
   transform: rotate(180deg);
 }
 
-.claudian-thinking-label {
+.ele-thinking-label {
   flex: 1;
   font-size: 13px;
   font-weight: 500;
-  color: var(--claudian-brand);
+  color: var(--ele-brand);
 }
 
 /* Thinking block content - tree-branch style */
-.claudian-thinking-content {
+.ele-thinking-content {
   padding: 4px 0;
   padding-inline-start: 24px;
   font-size: 13px;
@@ -87,24 +87,24 @@
   margin-inline-start: 7px;
 }
 
-.claudian-thinking-content p {
+.ele-thinking-content p {
   margin: 0 0 8px 0;
 }
 
-.claudian-thinking-content p:last-child {
+.ele-thinking-content p:last-child {
   margin-bottom: 0;
 }
 
-.claudian-thinking-content .claudian-code-wrapper {
+.ele-thinking-content .ele-code-wrapper {
   margin: 8px 0;
 }
 
-.claudian-thinking-content .claudian-code-wrapper pre {
+.ele-thinking-content .ele-code-wrapper pre {
   padding: 8px 10px;
   border-radius: 4px;
 }
 
-.claudian-thinking-content code {
+.ele-thinking-content code {
   font-family: var(--font-monospace);
   font-size: 12px;
 }

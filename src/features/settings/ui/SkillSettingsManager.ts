@@ -1,7 +1,7 @@
 import { Notice, setIcon } from 'obsidian';
 
 import type { SlashCommand } from '../../../core/types';
-import type ClaudianPlugin from '../../../main';
+import type ElePlugin from '../../../main';
 
 interface SkillInfo {
   name: string;
@@ -13,9 +13,9 @@ interface SkillInfo {
 
 export class SkillSettingsManager {
   private containerEl: HTMLElement;
-  private plugin: ClaudianPlugin;
+  private plugin: ElePlugin;
 
-  constructor(containerEl: HTMLElement, plugin: ClaudianPlugin) {
+  constructor(containerEl: HTMLElement, plugin: ElePlugin) {
     this.containerEl = containerEl;
     this.plugin = plugin;
     this.render();

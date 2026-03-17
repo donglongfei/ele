@@ -11,8 +11,8 @@ export {
   type StoredOpenCodianSettings,
   // Legacy exports for backwards compatibility
   CLAUDIAN_SETTINGS_PATH,
-  ClaudianSettingsStorage,
-  type StoredClaudianSettings,
+  EleSettingsStorage,
+  type StoredEleSettings,
   LEGACY_CLAUDIAN_SETTINGS_PATH,
 } from './OpenCodianSettingsStorage';
 export { MCP_CONFIG_PATH, McpStorage, LEGACY_MCP_CONFIG_PATH } from './McpStorage';

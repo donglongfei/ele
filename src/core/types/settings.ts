@@ -233,7 +233,7 @@ export type TabBarPosition = 'input' | 'header';
  * Claudian-specific settings stored in .opencode/opencodian-settings.json.
  * These settings are NOT shared with OpenClaw Gateway.
  */
-export interface ClaudianSettings {
+export interface EleSettings {
   // User preferences
   userName: string;
 
@@ -311,7 +311,7 @@ export interface ClaudianSettings {
 }
 
 /** Default Claudian-specific settings. */
-export const DEFAULT_SETTINGS: ClaudianSettings = {
+export const DEFAULT_SETTINGS: EleSettings = {
   // User preferences
   userName: '',
 

@@ -4,7 +4,7 @@ import { MarkdownRenderer, Notice } from 'obsidian';
 import { isSubagentToolName, isWriteEditTool, TOOL_AGENT_OUTPUT } from '../../../core/tools/toolNames';
 import type { ChatMessage, ImageAttachment, SubagentInfo, ToolCallInfo } from '../../../core/types';
 import { t } from '../../../i18n';
-import type ClaudianPlugin from '../../../main';
+import type ElePlugin from '../../../main';
 import { formatDurationMmSs } from '../../../utils/date';
 import { processFileLinks, registerFileLinkHandler } from '../../../utils/fileLink';
 import { replaceImageEmbedsWithHtml } from '../../../utils/imageEmbed';
@@ -21,7 +21,7 @@ export type RenderContentFn = (el: HTMLElement, markdown: string) => Promise<voi
 
 export class MessageRenderer {
   private app: App;
-  private plugin: ClaudianPlugin;
+  private plugin: ElePlugin;
   private component: Component;
   private messagesEl: HTMLElement;
   private rewindCallback?: (messageId: string) => Promise<void>;
@@ -33,7 +33,7 @@ export class MessageRenderer {
   private static readonly FORK_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9"/><path d="M12 12v3"/></svg>`;
 
   constructor(
-    plugin: ClaudianPlugin,
+    plugin: ElePlugin,
     component: Component,
     messagesEl: HTMLElement,
     rewindCallback?: (messageId: string) => Promise<void>,
@@ -80,19 +80,19 @@ export class MessageRenderer {
     }
 
     const msgEl = this.messagesEl.createDiv({
-      cls: `claudian-message claudian-message-${msg.role}`,
+      cls: `ele-message claudian-message-${msg.role}`,
       attr: {
         'data-message-id': msg.id,
         'data-role': msg.role,
       },
     });
 
-    const contentEl = msgEl.createDiv({ cls: 'claudian-message-content', attr: { dir: 'auto' } });
+    const contentEl = msgEl.createDiv({ cls: 'ele-message-content', attr: { dir: 'auto' } });
 
     if (msg.role === 'user') {
       const textToShow = msg.displayContent ?? msg.content;
       if (textToShow) {
-        const textEl = contentEl.createDiv({ cls: 'claudian-text-block' });
+        const textEl = contentEl.createDiv({ cls: 'ele-text-block' });
         void this.renderContent(textEl, textToShow);
         this.addUserCopyButton(msgEl, textToShow);
       }
@@ -123,8 +123,8 @@ export class MessageRenderer {
     this.liveMessageEls.clear();
 
     // Recreate welcome element after clearing
-    const newWelcomeEl = this.messagesEl.createDiv({ cls: 'claudian-welcome' });
-    newWelcomeEl.createDiv({ cls: 'claudian-welcome-greeting', text: getGreeting() });
+    const newWelcomeEl = this.messagesEl.createDiv({ cls: 'ele-welcome' });
+    newWelcomeEl.createDiv({ cls: 'ele-welcome-greeting', text: getGreeting() });
 
     for (let i = 0; i < messages.length; i++) {
       this.renderStoredMessage(messages[i], messages, i);
@@ -161,19 +161,19 @@ export class MessageRenderer {
     }
 
     const msgEl = this.messagesEl.createDiv({
-      cls: `claudian-message claudian-message-${msg.role}`,
+      cls: `ele-message claudian-message-${msg.role}`,
       attr: {
         'data-message-id': msg.id,
         'data-role': msg.role,
       },
     });
 
-    const contentEl = msgEl.createDiv({ cls: 'claudian-message-content', attr: { dir: 'auto' } });
+    const contentEl = msgEl.createDiv({ cls: 'ele-message-content', attr: { dir: 'auto' } });
 
     if (msg.role === 'user') {
       const textToShow = msg.displayContent ?? msg.content;
       if (textToShow) {
-        const textEl = contentEl.createDiv({ cls: 'claudian-text-block' });
+        const textEl = contentEl.createDiv({ cls: 'ele-text-block' });
         void this.renderContent(textEl, textToShow);
         this.addUserCopyButton(msgEl, textToShow);
       }
@@ -201,10 +201,10 @@ export class MessageRenderer {
    * Uses the same styling as streaming interrupts.
    */
   private renderInterruptMessage(): void {
-    const msgEl = this.messagesEl.createDiv({ cls: 'claudian-message claudian-message-assistant' });
-    const contentEl = msgEl.createDiv({ cls: 'claudian-message-content', attr: { dir: 'auto' } });
-    const textEl = contentEl.createDiv({ cls: 'claudian-text-block' });
-    textEl.innerHTML = '<span class="claudian-interrupted">Interrupted</span> <span class="claudian-interrupted-hint">· What should Claudian do instead?</span>';
+    const msgEl = this.messagesEl.createDiv({ cls: 'ele-message claudian-message-assistant' });
+    const contentEl = msgEl.createDiv({ cls: 'ele-message-content', attr: { dir: 'auto' } });
+    const textEl = contentEl.createDiv({ cls: 'ele-text-block' });
+    textEl.innerHTML = '<span class="ele-interrupted">Interrupted</span> <span class="ele-interrupted-hint">· What should Claudian do instead?</span>';
   }
 
   /**
@@ -240,7 +240,7 @@ export class MessageRenderer {
             // When reasoning is disabled, strip <thinking> tags and render remaining text
             const textWithoutThinking = text.replace(/<thinking(?:\s[^>]*)?>([\s\S]*?)<\/thinking>/g, '');
             if (textWithoutThinking.trim()) {
-              const textEl = contentEl.createDiv({ cls: 'claudian-text-block' });
+              const textEl = contentEl.createDiv({ cls: 'ele-text-block' });
               void this.renderContent(textEl, textWithoutThinking);
               this.addTextCopyButton(textEl, textWithoutThinking);
             }
@@ -267,7 +267,7 @@ export class MessageRenderer {
 
             // Render text before thinking
             if (beforeThinking.trim()) {
-              const textEl = contentEl.createDiv({ cls: 'claudian-text-block' });
+              const textEl = contentEl.createDiv({ cls: 'ele-text-block' });
               void this.renderContent(textEl, beforeThinking);
               this.addTextCopyButton(textEl, beforeThinking);
             }
@@ -288,12 +288,12 @@ export class MessageRenderer {
           // Render remaining text after last thinking block
           const afterThinking = text.substring(lastIndex);
           if (afterThinking.trim()) {
-            const textEl = contentEl.createDiv({ cls: 'claudian-text-block' });
+            const textEl = contentEl.createDiv({ cls: 'ele-text-block' });
             void this.renderContent(textEl, afterThinking);
             this.addTextCopyButton(textEl, afterThinking);
           } else if (!hasThinkingContent) {
             // No thinking blocks found, render entire text
-            const textEl = contentEl.createDiv({ cls: 'claudian-text-block' });
+            const textEl = contentEl.createDiv({ cls: 'ele-text-block' });
             void this.renderContent(textEl, text);
             this.addTextCopyButton(textEl, text);
           }
@@ -304,8 +304,8 @@ export class MessageRenderer {
             renderedToolIds.add(toolCall.id);
           }
         } else if (block.type === 'compact_boundary') {
-          const boundaryEl = contentEl.createDiv({ cls: 'claudian-compact-boundary' });
-          boundaryEl.createSpan({ cls: 'claudian-compact-boundary-label', text: 'Conversation compacted' });
+          const boundaryEl = contentEl.createDiv({ cls: 'ele-compact-boundary' });
+          boundaryEl.createSpan({ cls: 'ele-compact-boundary-label', text: 'Conversation compacted' });
         } else if (block.type === 'subagent') {
           const taskToolCall = msg.toolCalls?.find(
             tc => tc.id === block.subagentId && isSubagentToolName(tc.name)
@@ -335,7 +335,7 @@ export class MessageRenderer {
           // When reasoning is disabled, strip <thinking> tags and render remaining text
           const textWithoutThinking = text.replace(/<thinking(?:\s[^>]*)?>([\s\S]*?)<\/thinking>/g, '');
           if (textWithoutThinking.trim()) {
-            const textEl = contentEl.createDiv({ cls: 'claudian-text-block' });
+            const textEl = contentEl.createDiv({ cls: 'ele-text-block' });
             void this.renderContent(textEl, textWithoutThinking);
             this.addTextCopyButton(textEl, textWithoutThinking);
           }
@@ -360,7 +360,7 @@ export class MessageRenderer {
 
             // Render text before thinking
             if (beforeThinking.trim()) {
-              const textEl = contentEl.createDiv({ cls: 'claudian-text-block' });
+              const textEl = contentEl.createDiv({ cls: 'ele-text-block' });
               void this.renderContent(textEl, beforeThinking);
               this.addTextCopyButton(textEl, beforeThinking);
             }
@@ -381,12 +381,12 @@ export class MessageRenderer {
           // Render remaining text after last thinking block
           const afterThinking = text.substring(lastIndex);
           if (afterThinking.trim()) {
-            const textEl = contentEl.createDiv({ cls: 'claudian-text-block' });
+            const textEl = contentEl.createDiv({ cls: 'ele-text-block' });
             void this.renderContent(textEl, afterThinking);
             this.addTextCopyButton(textEl, afterThinking);
           } else if (!hasThinkingContent) {
             // No thinking blocks found, render entire text
-            const textEl = contentEl.createDiv({ cls: 'claudian-text-block' });
+            const textEl = contentEl.createDiv({ cls: 'ele-text-block' });
             void this.renderContent(textEl, text);
             this.addTextCopyButton(textEl, text);
           }
@@ -403,10 +403,10 @@ export class MessageRenderer {
     const hasCompactBoundary = msg.contentBlocks?.some(b => b.type === 'compact_boundary');
     if (msg.durationSeconds && msg.durationSeconds > 0 && !hasCompactBoundary) {
       const flavorWord = msg.durationFlavorWord || 'Baked';
-      const footerEl = contentEl.createDiv({ cls: 'claudian-response-footer' });
+      const footerEl = contentEl.createDiv({ cls: 'ele-response-footer' });
       footerEl.createSpan({
         text: `* ${flavorWord} for ${formatDurationMmSs(msg.durationSeconds)}`,
-        cls: 'claudian-baked-duration',
+        cls: 'ele-baked-duration',
       });
     }
   }
@@ -524,10 +524,10 @@ export class MessageRenderer {
    * Renders image attachments above a message.
    */
   renderMessageImages(containerEl: HTMLElement, images: ImageAttachment[]): void {
-    const imagesEl = containerEl.createDiv({ cls: 'claudian-message-images' });
+    const imagesEl = containerEl.createDiv({ cls: 'ele-message-images' });
 
     for (const image of images) {
-      const imageWrapper = imagesEl.createDiv({ cls: 'claudian-message-image' });
+      const imageWrapper = imagesEl.createDiv({ cls: 'ele-message-image' });
       const imgEl = imageWrapper.createEl('img', {
         attr: {
           alt: image.name,
@@ -549,8 +549,8 @@ export class MessageRenderer {
   showFullImage(image: ImageAttachment): void {
     const dataUri = `data:${image.mediaType};base64,${image.data}`;
 
-    const overlay = document.body.createDiv({ cls: 'claudian-image-modal-overlay' });
-    const modal = overlay.createDiv({ cls: 'claudian-image-modal' });
+    const overlay = document.body.createDiv({ cls: 'ele-image-modal-overlay' });
+    const modal = overlay.createDiv({ cls: 'ele-image-modal' });
 
     modal.createEl('img', {
       attr: {
@@ -559,7 +559,7 @@ export class MessageRenderer {
       },
     });
 
-    const closeBtn = modal.createDiv({ cls: 'claudian-image-modal-close' });
+    const closeBtn = modal.createDiv({ cls: 'ele-image-modal-close' });
     closeBtn.setText('\u00D7');
 
     const handleEsc = (e: KeyboardEvent) => {
@@ -610,10 +610,10 @@ export class MessageRenderer {
       // Wrap pre elements and move buttons outside scroll area
       el.querySelectorAll('pre').forEach((pre) => {
         // Skip if already wrapped
-        if (pre.parentElement?.classList.contains('claudian-code-wrapper')) return;
+        if (pre.parentElement?.classList.contains('ele-code-wrapper')) return;
 
         // Create wrapper
-        const wrapper = createEl('div', { cls: 'claudian-code-wrapper' });
+        const wrapper = createEl('div', { cls: 'ele-code-wrapper' });
         pre.parentElement?.insertBefore(wrapper, pre);
         wrapper.appendChild(pre);
 
@@ -624,7 +624,7 @@ export class MessageRenderer {
           if (match) {
             wrapper.classList.add('has-language');
             const label = createEl('span', {
-              cls: 'claudian-code-lang-label',
+              cls: 'ele-code-lang-label',
               text: match[1],
             });
             wrapper.appendChild(label);
@@ -651,7 +651,7 @@ export class MessageRenderer {
       processFileLinks(this.app, el);
     } catch {
       el.createDiv({
-        cls: 'claudian-render-error',
+        cls: 'ele-render-error',
         text: 'Failed to render message content.',
       });
     }
@@ -671,7 +671,7 @@ export class MessageRenderer {
    * @param markdown The original markdown content to copy
    */
   addTextCopyButton(textEl: HTMLElement, markdown: string): void {
-    const copyBtn = textEl.createSpan({ cls: 'claudian-text-copy-btn' });
+    const copyBtn = textEl.createSpan({ cls: 'ele-text-copy-btn' });
     copyBtn.innerHTML = MessageRenderer.COPY_ICON;
 
     let feedbackTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -730,12 +730,12 @@ export class MessageRenderer {
   private getOrCreateActionsToolbar(msgEl: HTMLElement): HTMLElement {
     const existing = msgEl.querySelector('.claudian-user-msg-actions') as HTMLElement | null;
     if (existing) return existing;
-    return msgEl.createDiv({ cls: 'claudian-user-msg-actions' });
+    return msgEl.createDiv({ cls: 'ele-user-msg-actions' });
   }
 
   private addUserCopyButton(msgEl: HTMLElement, content: string): void {
     const toolbar = this.getOrCreateActionsToolbar(msgEl);
-    const copyBtn = toolbar.createSpan({ cls: 'claudian-user-msg-copy-btn' });
+    const copyBtn = toolbar.createSpan({ cls: 'ele-user-msg-copy-btn' });
     copyBtn.innerHTML = MessageRenderer.COPY_ICON;
     copyBtn.setAttribute('aria-label', 'Copy message');
 
@@ -762,7 +762,7 @@ export class MessageRenderer {
 
   private addRewindButton(msgEl: HTMLElement, messageId: string): void {
     const toolbar = this.getOrCreateActionsToolbar(msgEl);
-    const btn = toolbar.createSpan({ cls: 'claudian-message-rewind-btn' });
+    const btn = toolbar.createSpan({ cls: 'ele-message-rewind-btn' });
     if (toolbar.firstChild !== btn) toolbar.insertBefore(btn, toolbar.firstChild);
     btn.innerHTML = MessageRenderer.REWIND_ICON;
     btn.setAttribute('aria-label', t('chat.rewind.ariaLabel'));
@@ -778,7 +778,7 @@ export class MessageRenderer {
 
   private addForkButton(msgEl: HTMLElement, messageId: string): void {
     const toolbar = this.getOrCreateActionsToolbar(msgEl);
-    const btn = toolbar.createSpan({ cls: 'claudian-message-fork-btn' });
+    const btn = toolbar.createSpan({ cls: 'ele-message-fork-btn' });
     if (toolbar.firstChild !== btn) toolbar.insertBefore(btn, toolbar.firstChild);
     btn.innerHTML = MessageRenderer.FORK_ICON;
     btn.setAttribute('aria-label', t('chat.fork.ariaLabel'));

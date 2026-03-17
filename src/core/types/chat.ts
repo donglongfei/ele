@@ -12,14 +12,7 @@ export interface ForkSource {
 }
 
 /** View type identifier for Obsidian. */
-export const VIEW_TYPE_OPENCODIAN = 'opencodian-view';
-
-/**
- * Legacy view type constant for backward compatibility.
- * Points to the same value as VIEW_TYPE_OPENCODIAN to avoid dual registration complexity.
- * Old code importing this will continue to work.
- */
-export const VIEW_TYPE_CLAUDIAN = VIEW_TYPE_OPENCODIAN;
+export const VIEW_TYPE_ELE = 'ele-view';
 
 /** Supported image media types for attachments. */
 export type ImageMediaType = 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';

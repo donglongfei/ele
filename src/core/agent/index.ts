@@ -1,8 +1,8 @@
-// OpenClaw service (replaces ClaudianService)
+// OpenClaw service (replaces EleService)
 export { type ApprovalCallback, type ApprovalCallbackOptions, OpenClawService, type QueryOptions } from './OpenClawService';
 
 // Legacy exports for backwards compatibility during migration
-export { OpenClawService as ClaudianService } from './OpenClawService';
+export { OpenClawService as EleService } from './OpenClawService';
 
 export { MessageChannel } from './MessageChannel';
 export {

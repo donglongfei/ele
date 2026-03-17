@@ -16,20 +16,20 @@ export class NavigationSidebar {
     private parentEl: HTMLElement,
     private messagesEl: HTMLElement
   ) {
-    this.container = this.parentEl.createDiv({ cls: 'claudian-nav-sidebar' });
+    this.container = this.parentEl.createDiv({ cls: 'ele-nav-sidebar' });
 
     // Create buttons
-    this.topBtn = this.createButton('claudian-nav-btn-top', 'chevrons-up', 'Scroll to top');
-    this.prevBtn = this.createButton('claudian-nav-btn-prev', 'chevron-up', 'Previous message');
-    this.nextBtn = this.createButton('claudian-nav-btn-next', 'chevron-down', 'Next message');
-    this.bottomBtn = this.createButton('claudian-nav-btn-bottom', 'chevrons-down', 'Scroll to bottom');
+    this.topBtn = this.createButton('ele-nav-btn-top', 'chevrons-up', 'Scroll to top');
+    this.prevBtn = this.createButton('ele-nav-btn-prev', 'chevron-up', 'Previous message');
+    this.nextBtn = this.createButton('ele-nav-btn-next', 'chevron-down', 'Next message');
+    this.bottomBtn = this.createButton('ele-nav-btn-bottom', 'chevrons-down', 'Scroll to bottom');
 
     this.setupEventListeners();
     this.updateVisibility();
   }
 
   private createButton(cls: string, icon: string, label: string): HTMLElement {
-    const btn = this.container.createDiv({ cls: `claudian-nav-btn ${cls}` });
+    const btn = this.container.createDiv({ cls: `ele-nav-btn ${cls}` });
     setIcon(btn, icon);
     btn.setAttribute('aria-label', label);
     return btn;

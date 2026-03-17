@@ -5,15 +5,15 @@
  */
 
 import { extractMcpMentions, transformMcpMentions } from '../../utils/mcp';
-import type { ClaudianMcpServer, McpServerConfig } from '../types';
+import type { EleMcpServer, McpServerConfig } from '../types';
 
 /** Storage interface for loading MCP servers. */
 export interface McpStorageAdapter {
-  load(): Promise<ClaudianMcpServer[]>;
+  load(): Promise<EleMcpServer[]>;
 }
 
 export class McpServerManager {
-  private servers: ClaudianMcpServer[] = [];
+  private servers: EleMcpServer[] = [];
   private storage: McpStorageAdapter;
 
   constructor(storage: McpStorageAdapter) {
@@ -24,7 +24,7 @@ export class McpServerManager {
     this.servers = await this.storage.load();
   }
 
-  getServers(): ClaudianMcpServer[] {
+  getServers(): EleMcpServer[] {
     return this.servers;
   }
 
@@ -81,7 +81,7 @@ export class McpServerManager {
     return this.collectDisallowedTools().sort();
   }
 
-  private collectDisallowedTools(filter?: (server: ClaudianMcpServer) => boolean): string[] {
+  private collectDisallowedTools(filter?: (server: EleMcpServer) => boolean): string[] {
     const disallowed = new Set<string>();
 
     for (const server of this.servers) {
@@ -103,7 +103,7 @@ export class McpServerManager {
     return this.servers.length > 0;
   }
 
-  getContextSavingServers(): ClaudianMcpServer[] {
+  getContextSavingServers(): EleMcpServer[] {
     return this.servers.filter((s) => s.enabled && s.contextSaving);
   }
 

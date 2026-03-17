@@ -1,7 +1,7 @@
 // Stubbed out - Claude SDK not available in Ele build
 // Original functionality requires @anthropic-ai/claude-agent-sdk
 
-import type ClaudianPlugin from '../../main';
+import type ElePlugin from '../../main';
 import { type CursorContext } from '../../utils/editor';
 
 export type InlineEditMode = 'selection' | 'cursor';
@@ -55,10 +55,10 @@ export function parseInlineEditResponse(responseText: string): InlineEditResult 
 }
 
 export class InlineEditService {
-  private plugin: ClaudianPlugin;
+  private plugin: ElePlugin;
   private abortController: AbortController | null = null;
 
-  constructor(plugin: ClaudianPlugin) {
+  constructor(plugin: ElePlugin) {
     this.plugin = plugin;
   }
 
