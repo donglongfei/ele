@@ -6,7 +6,7 @@
  */
 
 import type { Editor, MarkdownView } from 'obsidian';
-import { Notice, Plugin, addIcon } from 'obsidian';
+import { addIcon,Notice, Plugin } from 'obsidian';
 
 import { AgentManager } from './core/agents';
 import { McpServerManager } from './core/mcp';
@@ -14,22 +14,22 @@ import { StorageService } from './core/storage';
 import { isSubagentToolName, TOOL_TASK } from './core/tools/toolNames';
 import type {
   ChatMessage,
-  EleSettings,
   Conversation,
   ConversationMeta,
+  EleSettings,
   SlashCommand,
   SubagentInfo,
 } from './core/types';
 import {
   DEFAULT_KIMI_MODELS,
   DEFAULT_SETTINGS,
-  getHostnameKey,
   VIEW_TYPE_ELE,
 } from './core/types';
 import { EleView } from './features/chat/EleView';
 import { type InlineEditContext, InlineEditModal } from './features/inline-edit/ui/InlineEditModal';
 import { OpenCodianSettingTab } from './features/settings/OpenCodianSettings';
 import { setLocale } from './i18n';
+import { ELE_LOGO_RED_SVG,ELE_LOGO_SVG } from './shared/icons/logo';
 import { buildCursorContext } from './utils/editor';
 import { getCurrentModelFromEnvironment, getModelsFromEnvironment, parseEnvironmentVariables } from './utils/env';
 import { getVaultPath } from './utils/path';
@@ -40,7 +40,6 @@ import {
   sdkSessionExists,
   type SDKSessionLoadResult,
 } from './utils/sdkSession';
-import { ELE_LOGO_SVG, ELE_LOGO_RED_SVG } from './shared/icons/logo';
 
 /**
  * Main plugin class for OpenCodian.

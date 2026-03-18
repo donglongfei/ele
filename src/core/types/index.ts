@@ -16,13 +16,13 @@ export {
 // Model types
 export {
   type ClaudeModel,
-  type KimiModel,
-  CONTEXT_WINDOW_STANDARD,
   CONTEXT_WINDOW_KIMI_K2_5,
-  DEFAULT_KIMI_MODELS,
+  CONTEXT_WINDOW_STANDARD,
   DEFAULT_CLAUDE_MODELS,  // Legacy alias
+  DEFAULT_KIMI_MODELS,
   DEFAULT_THINKING_BUDGET,
   getContextWindowSize,
+  type KimiModel,
   type ModelConfig,
   resolveModelConfig,
   resolveModelWithBetas,  // Legacy compatibility
@@ -38,11 +38,11 @@ export {
   type ApprovalDecision,
   type CCPermissions,
   type CCSettings,
-  type EleSettings,
   createPermissionRule,
   DEFAULT_CC_PERMISSIONS,
   DEFAULT_CC_SETTINGS,
   DEFAULT_SETTINGS,
+  type EleSettings,
   type EnvSnippet,
   getBashToolBlockedCommands,
   getCurrentPlatformBlockedCommands,
@@ -88,9 +88,9 @@ export {
 
 // MCP types
 export {
+  DEFAULT_MCP_SERVER,
   type EleMcpConfigFile,
   type EleMcpServer,
-  DEFAULT_MCP_SERVER,
   getMcpServerType,
   isValidMcpServerConfig,
   type McpConfigFile,

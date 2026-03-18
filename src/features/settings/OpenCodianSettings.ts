@@ -1,4 +1,3 @@
-import * as fs from 'fs';
 import type { App } from 'obsidian';
 import { Notice, PluginSettingTab, Setting } from 'obsidian';
 
@@ -8,7 +7,6 @@ import { getAvailableLocales, getLocaleDisplayName, setLocale, t } from '../../i
 import type { Locale, TranslationKey } from '../../i18n/types';
 import type ElePlugin from '../../main';
 import { findNodeExecutable, formatContextLimit, getCustomModelIds, getEnhancedPath, getModelsFromEnvironment, parseContextLimit, parseEnvironmentVariables } from '../../utils/env';
-
 import { EleView } from '../chat/EleView';
 import { buildNavMappingText, parseNavMappings } from './keyboardNavigation';
 import { AgentSettings } from './ui/AgentSettings';
@@ -811,7 +809,7 @@ export class OpenCodianSettingTab extends PluginSettingTab {
                   authToken: authToken || undefined,
                 },
               }));
-            } catch (err) {
+            } catch {
               if (!resolved) {
                 resolved = true;
                 ws.close();
@@ -863,7 +861,7 @@ export class OpenCodianSettingTab extends PluginSettingTab {
       } else {
         statusEl.innerHTML = '❌ <span style="color: var(--text-error);">Gateway not detected. Install: <code>npm install -g openclaw</code></span>';
       }
-    } catch (error) {
+    } catch {
       statusEl.innerHTML = '⚠️ <span style="color: var(--text-warning);">Could not check Gateway status</span>';
     }
   }

@@ -4,7 +4,7 @@ import { Notice } from 'obsidian';
 import { EleService } from '../../../core/agent';
 import type { McpServerManager } from '../../../core/mcp';
 import type { ChatMessage, ClaudeModel, Conversation, PermissionMode, SlashCommand, ThinkingBudget } from '../../../core/types';
-import { DEFAULT_CLAUDE_MODELS, DEFAULT_THINKING_BUDGET, getContextWindowSize, THINKING_BUDGETS } from '../../../core/types';
+import { DEFAULT_CLAUDE_MODELS, DEFAULT_THINKING_BUDGET, getContextWindowSize } from '../../../core/types';
 import { t } from '../../../i18n';
 import type ElePlugin from '../../../main';
 import { SlashCommandDropdown } from '../../../shared/components/SlashCommandDropdown';

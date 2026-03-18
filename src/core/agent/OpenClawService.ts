@@ -20,12 +20,10 @@ import { Notice } from 'obsidian';
 
 import type OpenCodianPlugin from '../../main';
 import { getActionDescription } from '../security';
-import { TOOL_ASK_USER_QUESTION, TOOL_ENTER_PLAN_MODE, TOOL_EXIT_PLAN_MODE, TOOL_SKILL } from '../tools/toolNames';
 import type {
   ApprovalDecision,
   ChatMessage,
   ExitPlanModeCallback,
-  ExitPlanModeDecision,
   ImageAttachment,
   PermissionMode,
   StreamChunk,
@@ -442,15 +440,17 @@ export class OpenClawService {
    */
   private transformToStreamChunk(type: string, payload: any): StreamChunk | null {
     switch (type) {
-      case 'text':
+      case 'text': {
         // Try multiple possible content fields
         const textContent = payload.content || payload.data?.content || payload.data?.text || payload.text;
         if (!textContent) return null;
         return { type: 'text', content: textContent };
-      case 'thinking':
+      }
+      case 'thinking': {
         const thinkingContent = payload.content || payload.data?.content || payload.data?.text;
         if (!thinkingContent) return null;
         return { type: 'thinking', content: thinkingContent };
+      }
       case 'tool_use':
         return {
           type: 'tool_use',
@@ -613,7 +613,7 @@ export class OpenClawService {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN || !this.isAuthenticated) {
       try {
         await this.connect();
-      } catch (error) {
+      } catch {
         yield {
           type: 'error',
           content: 'Failed to connect to OpenClaw Gateway. Is it running on port 18789?',
@@ -633,16 +633,11 @@ export class OpenClawService {
     }
 
     // Get or create session for this conversation
-    const session = this.sessionManager.getOrCreateSession(conversationId);
-    
     // Build message params with sessionKey (uses channelKey for lazy session creation)
     const messageParams = this.sessionManager.buildMessageParams(conversationId, prompt);
 
     // Generate request ID
     const reqId = randomUUID();
-
-    // Get model for potential future use
-    const model = queryOptions?.model || this.plugin.settings.model;
 
     // Build OpenClaw agent request with sessionKey for multi-session support
     const agentRequest: any = {
@@ -957,7 +952,7 @@ export class OpenClawService {
       const session = sessions[targetKey] || Object.values(sessions)[0];
 
       return (session as any)?.systemId || (session as any)?.id || null;
-    } catch (error) {
+    } catch {
       // File not found or parse error - not fatal
       return null;
     }

@@ -64,6 +64,7 @@ import type {
 } from '../types';
 import { resolveModelWithBetas, THINKING_BUDGETS } from '../types';
 import { MessageChannel } from './MessageChannel';
+import { OpenClawService } from './OpenClawService';
 import {
   type ColdStartQueryContext,
   type PersistentQueryContext,
@@ -79,7 +80,6 @@ import {
   type ResponseHandler,
   type UserContentBlock,
 } from './types';
-import { OpenClawService } from './OpenClawService';
 
 export type { ApprovalDecision };
 
