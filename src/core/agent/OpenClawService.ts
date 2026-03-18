@@ -354,6 +354,9 @@ export class OpenClawService {
    * Route incoming Gateway messages to handlers
    */
   private handleMessage(msg: OpenClawMessage): void {
+    // Debug: Log all incoming messages
+    console.log('[OpenClawService] Received message:', JSON.stringify(msg).substring(0, 200));
+
     // Handle response messages (res type) - must check this FIRST
     if (msg.type === 'res') {
       // Check if we have a handler waiting for this response ID
@@ -559,6 +562,7 @@ export class OpenClawService {
    * Emit chunk to active response handlers (optimized for single handler)
    */
   private emitChunk(chunk: StreamChunk): void {
+    console.log('[OpenClawService] Emitting chunk:', chunk.type, chunk);
     // Fast path: usually only one handler
     if (this.responseHandlers.length === 1) {
       this.responseHandlers[0].onChunk(chunk);
@@ -730,14 +734,18 @@ export class OpenClawService {
     });
 
     // Send to Gateway
+    console.log('[OpenClawService] Sending agent request:', JSON.stringify(agentRequest).substring(0, 300));
     this.sendMessage(agentRequest);
 
     try {
       // Event-driven streaming with micro-batching
+      console.log('[OpenClawService] Starting event loop, handlers:', this.responseHandlers.length);
       while (!done) {
         // Yield all pending chunks (micro-batch)
         while (pendingChunks.length > 0) {
-          yield pendingChunks.shift()!;
+          const chunk = pendingChunks.shift()!;
+          console.log('[OpenClawService] Yielding chunk:', chunk.type);
+          yield chunk;
         }
 
         // Wait for next chunk or completion

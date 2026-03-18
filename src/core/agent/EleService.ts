@@ -736,154 +736,19 @@ export class EleService {
     conversationHistory?: ChatMessage[],
     queryOptions?: QueryOptions
   ): AsyncGenerator<StreamChunk> {
-    const vaultPath = getVaultPath(this.plugin.app);
-    if (!vaultPath) {
-      yield { type: 'error', content: 'Could not determine vault path' };
+    // Use OpenClawService for all queries
+    if (!this.openClawService) {
+      yield { type: 'error', content: 'OpenClaw Gateway service not available' };
       return;
     }
 
-    const resolvedClaudePath = ""; // Removed: Ele uses OpenClaw Gateway
-    if (!resolvedClaudePath) {
-      yield { type: 'error', content: 'Claude CLI not found. Please install Claude Code CLI.' };
-      return;
-    }
+    // Get conversation ID from query options or generate one
+    const conversationId = (queryOptions as any)?.conversationId;
 
-    const customEnv = parseEnvironmentVariables(this.plugin.getActiveEnvironmentVariables());
-    const enhancedPath = getEnhancedPath(customEnv.PATH, resolvedClaudePath);
-    const missingNodeError = getMissingNodeError(resolvedClaudePath, enhancedPath);
-    if (missingNodeError) {
-      yield { type: 'error', content: missingNodeError };
-      return;
-    }
-
-    // Rebuild history if needed before choosing persistent vs cold-start
-    let promptToSend = prompt;
-    let forceColdStart = false;
-
-    // Clear interrupted flag - persistent query handles interruption gracefully,
-    // no need to force cold-start just because user cancelled previous response
-    if (this._sessionManager.wasInterrupted()) {
-      this._sessionManager.clearInterrupted();
-    }
-
-    // Session mismatch recovery: SDK returned a different session ID (context lost)
-    // Inject history to restore context without forcing cold-start
-    if (this._sessionManager.needsHistoryRebuild() && conversationHistory && conversationHistory.length > 0) {
-      const historyContext = buildContextFromHistory(conversationHistory);
-      const actualPrompt = stripCurrentNoteContext(prompt);
-      promptToSend = buildPromptWithHistoryContext(historyContext, prompt, actualPrompt, conversationHistory);
-      this._sessionManager.clearHistoryRebuild();
-    }
-
-    const noSessionButHasHistory = !this._sessionManager.getSessionId() &&
-      conversationHistory && conversationHistory.length > 0;
-
-    if (noSessionButHasHistory) {
-      const historyContext = buildContextFromHistory(conversationHistory!);
-      const actualPrompt = stripCurrentNoteContext(prompt);
-      promptToSend = buildPromptWithHistoryContext(historyContext, prompt, actualPrompt, conversationHistory!);
-
-      // Note: Do NOT call invalidateSession() here. The cold-start will capture
-      // a new session ID anyway, and invalidating would break any persistent query
-      // restart that happens during the cold-start (causing SESSION MISMATCH).
-      forceColdStart = true;
-    }
-
-    const effectiveQueryOptions = forceColdStart
-      ? { ...queryOptions, forceColdStart: true }
-      : queryOptions;
-
-    if (forceColdStart) {
-      // Set flag BEFORE closing to prevent consumer error from triggering restart
-      this.coldStartInProgress = true;
-      this.closePersistentQuery('session invalidated');
-    }
-
-    // Determine query path: persistent vs cold-start
-    const shouldUsePersistent = !effectiveQueryOptions?.forceColdStart;
-
-    if (shouldUsePersistent) {
-      // Start persistent query if not running
-      if (!this.persistentQuery && !this.shuttingDown) {
-        await this.startPersistentQuery(
-          vaultPath,
-          resolvedClaudePath,
-          this._sessionManager.getSessionId() ?? undefined
-        );
-      }
-
-      if (this.persistentQuery && !this.shuttingDown) {
-        // Use persistent query path
-        try {
-          yield* this.queryViaPersistent(promptToSend, images, vaultPath, resolvedClaudePath, effectiveQueryOptions);
-          return;
-        } catch (error) {
-          if (isSessionExpiredError(error) && conversationHistory && conversationHistory.length > 0) {
-            this._sessionManager.invalidateSession();
-            const retryRequest = this.buildHistoryRebuildRequest(prompt, conversationHistory);
-
-            this.coldStartInProgress = true;
-            this.abortController = new AbortController();
-
-            try {
-              yield* this.queryViaSDK(
-                retryRequest.prompt,
-                vaultPath,
-                resolvedClaudePath,
-                // Use current message's images, fallback to history images
-                images ?? retryRequest.images,
-                effectiveQueryOptions
-              );
-            } catch (retryError) {
-              const msg = retryError instanceof Error ? retryError.message : 'Unknown error';
-              yield { type: 'error', content: msg };
-            } finally {
-              this.coldStartInProgress = false;
-              this.abortController = null;
-            }
-            return;
-          }
-
-          throw error;
-        }
-      }
-    }
-
-    // Cold-start path (existing logic)
-    // Set flag to prevent consumer error restarts from interfering
-    this.coldStartInProgress = true;
-    this.abortController = new AbortController();
-
-    try {
-      yield* this.queryViaSDK(promptToSend, vaultPath, resolvedClaudePath, images, effectiveQueryOptions);
-    } catch (error) {
-      if (isSessionExpiredError(error) && conversationHistory && conversationHistory.length > 0) {
-        this._sessionManager.invalidateSession();
-        const retryRequest = this.buildHistoryRebuildRequest(prompt, conversationHistory);
-
-        try {
-          yield* this.queryViaSDK(
-            retryRequest.prompt,
-            vaultPath,
-            resolvedClaudePath,
-            // Use current message's images, fallback to history images
-            images ?? retryRequest.images,
-            effectiveQueryOptions
-          );
-        } catch (retryError) {
-          const msg = retryError instanceof Error ? retryError.message : 'Unknown error';
-          yield { type: 'error', content: msg };
-        }
-        return;
-      }
-
-      const msg = error instanceof Error ? error.message : 'Unknown error';
-      yield { type: 'error', content: msg };
-    } finally {
-      this.coldStartInProgress = false;
-      this.abortController = null;
-    }
+    // Delegate to OpenClawService
+    yield* this.openClawService.query(prompt, images, conversationHistory, { ...queryOptions, conversationId });
   }
+
 
   private buildHistoryRebuildRequest(
     prompt: string,
