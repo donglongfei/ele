@@ -6,7 +6,7 @@ Core modules have **no feature dependencies**. Features depend on core, never th
 
 | Module | Purpose | Key Files |
 |--------|---------|-----------|
-| `agent/` | Claude Agent SDK wrapper | `ClaudianService` (incl. fork session tracking), `SessionManager`, `QueryOptionsBuilder` (incl. `resumeSessionAt`), `MessageChannel`, `customSpawn` |
+| `agent/` | OpenClaw Gateway wrapper | `EleService` (incl. fork session tracking), `OpenClawService`, `SessionManager`, `QueryOptionsBuilder`, `MessageChannel`, `customSpawn` |
 | `agents/` | Custom agent discovery | `AgentManager`, `AgentStorage` |
 | `commands/` | Built-in command actions | `builtInCommands` |
 | `hooks/` | Security hooks | `SecurityHooks` |
@@ -16,7 +16,7 @@ Core modules have **no feature dependencies**. Features depend on core, never th
 | `prompts/` | System prompts | `mainAgent`, `inlineEdit`, `instructionRefine`, `titleGeneration` |
 | `sdk/` | SDK message transform | `transformSDKMessage`, `typeGuards`, `types` |
 | `security/` | Access control | `ApprovalManager` (permission utilities), `BashPathValidator`, `BlocklistChecker` |
-| `storage/` | Persistence layer | `StorageService`, `SessionStorage`, `CCSettingsStorage`, `ClaudianSettingsStorage`, `McpStorage`, `SkillStorage`, `SlashCommandStorage`, `VaultFileAdapter` |
+| `storage/` | Persistence layer | `StorageService`, `SessionStorage`, `CCSettingsStorage`, `EleSettingsStorage`, `McpStorage`, `SkillStorage`, `SlashCommandStorage`, `VaultFileAdapter` |
 | `tools/` | Tool utilities | `toolNames` (incl. plan mode tools), `toolIcons`, `toolInput`, `todo` |
 | `types/` | Type definitions | `settings`, `agent`, `mcp`, `chat` (incl. `forkSource?: { sessionId, resumeAt }`), `tools`, `models`, `sdk`, `diff` |
 
@@ -33,28 +33,35 @@ prompts/ ← agent/
 
 ## Key Patterns
 
-### ClaudianService
+### EleService
 ```typescript
 // One instance per tab (lazy init on first query)
-const service = new ClaudianService(plugin, vaultPath);
+const service = new EleService(plugin, mcpManager);
 await service.query(prompt, options);  // Returns async iterator
 service.abort();  // Cancel streaming
 ```
 
+### OpenClawService
+```typescript
+// WebSocket connection to OpenClaw Gateway
+const openClawService = new OpenClawService(plugin, vaultPath);
+await openClawService.sendMessage(message);  // Send to Gateway
+```
+
 ### QueryOptionsBuilder
 ```typescript
-// Builds SDK Options from settings
+// Builds query options from settings
 const builder = new QueryOptionsBuilder(plugin, settings);
 const options = builder.build({ sessionId, maxThinkingTokens });
 ```
 
-### Storage (Claude Code pattern)
+### Storage (OpenClaw pattern)
 ```typescript
-// Settings in vault/.claude/settings.json
+// Settings in vault/.opencode/settings.json
 await CCSettingsStorage.load(vaultPath);
 await CCSettingsStorage.save(vaultPath, settings);
 
-// Sessions: SDK-native (~/.claude/projects/) + metadata overlay (.meta.json)
+// Sessions: OpenClaw Gateway (~/.openclaw/) + metadata overlay (.meta.json)
 await SessionStorage.loadSession(vaultPath, sessionId);
 ```
 
@@ -65,9 +72,9 @@ await SessionStorage.loadSession(vaultPath, sessionId);
 
 ## Gotchas
 
-- `ClaudianService` must be disposed on tab close (abort + cleanup)
-- `SessionManager` handles SDK session resume via `sessionId`
-- Fork uses `pendingForkSession` + `pendingResumeAt` on `ClaudianService` to pass `resumeSessionAt` to SDK; these are one-shot flags consumed on the next query
+- `EleService` must be disposed on tab close (abort + cleanup)
+- `SessionManager` handles OpenClaw session resume via `sessionId`
+- Fork uses `pendingForkSession` + `pendingResumeAt` on `EleService` to pass resume point; these are one-shot flags consumed on the next query
 - Storage paths are encoded: non-alphanumeric → `-`
 - `customSpawn` handles cross-platform process spawning
-- Plan mode uses dedicated callbacks (`exitPlanModeCallback`, `permissionModeSyncCallback`) that bypass normal approval flow in `canUseTool`. `EnterPlanMode` is auto-approved by the SDK; the stream event is detected to sync UI state.
+- Plan mode uses dedicated callbacks (`exitPlanModeCallback`, `permissionModeSyncCallback`) that bypass normal approval flow in `canUseTool`. `EnterPlanMode` is auto-approved; the stream event is detected to sync UI state.
