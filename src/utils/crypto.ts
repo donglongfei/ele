@@ -3,7 +3,7 @@
  * Uses Node.js crypto module (available in Obsidian/Electron environment).
  */
 
-import crypto from 'crypto';
+import * as crypto from 'crypto';
 
 /**
  * Ed25519 SPKI prefix for public key encoding.

@@ -2,7 +2,7 @@
  * i18n type definitions
  */
 
-export type Locale = 'en' | 'zh-CN' | 'zh-TW';
+export type Locale = 'en' | 'zh-CN' | 'zh-TW' | 'ja' | 'ko' | 'de' | 'fr' | 'es' | 'ru' | 'pt';
 
 /**
  * Translation key type - represents all valid translation keys

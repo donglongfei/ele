@@ -25,7 +25,6 @@ import {
   DEFAULT_SETTINGS,
   getHostnameKey,
   VIEW_TYPE_ELE,
-  VIEW_TYPE_ELE,  // Legacy support
 } from './core/types';
 import { EleView } from './features/chat/EleView';
 import { type InlineEditContext, InlineEditModal } from './features/inline-edit/ui/InlineEditModal';

@@ -7,7 +7,7 @@ import { DEFAULT_KIMI_MODELS } from '../../core/types/models';
 import { getAvailableLocales, getLocaleDisplayName, setLocale, t } from '../../i18n';
 import type { Locale, TranslationKey } from '../../i18n/types';
 import type ElePlugin from '../../main';
-import { formatContextLimit, getCustomModelIds, getModelsFromEnvironment, parseContextLimit, parseEnvironmentVariables } from '../../utils/env';
+import { findNodeExecutable, formatContextLimit, getCustomModelIds, getEnhancedPath, getModelsFromEnvironment, parseContextLimit, parseEnvironmentVariables } from '../../utils/env';
 import { EleView } from '../chat/EleView';
 import { buildNavMappingText, parseNavMappings } from './keyboardNavigation';
 import { AgentSettings } from './ui/AgentSettings';
@@ -380,7 +380,7 @@ export class ClaudianSettingTab extends PluginSettingTab {
     const mcpContainer = containerEl.createDiv({ cls: 'ele-mcp-container' });
     new McpSettingsManager(mcpContainer, this.plugin);
 
-    new Setting(containerEl).setName(t('settings.plugins.name')).setHeading();
+    new Setting(containerEl).setName(t('settings.skills.name')).setHeading();
 
     const skillsDesc = containerEl.createDiv({ cls: 'opencodian-skill-settings-desc' });
     skillsDesc.createEl('p', {

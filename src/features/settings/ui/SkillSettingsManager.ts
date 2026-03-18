@@ -84,7 +84,7 @@ export class SkillSettingsManager {
   private detectSource(cmd: SlashCommand): 'workspace' | 'managed' | 'bundled' {
     // Simple heuristic based on source field
     if (cmd.source === 'user') return 'workspace';
-    if (cmd.source === 'plugin') return 'bundled';
+    if (cmd.source === 'sdk') return 'bundled';
     return 'managed';
   }
 
