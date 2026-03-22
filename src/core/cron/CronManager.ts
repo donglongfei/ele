@@ -391,9 +391,12 @@ export class CronManager {
     });
 
     try {
+      // Ensure we have a dedicated cron tab for displaying output
+      const cronTab = await this.ensureCronTab();
+      
       switch (job.type) {
         case 'openclaw-query':
-          await this.executeOpenClawQuery(job.config as OpenClawQueryConfig, job.id, job.name);
+          await this.executeOpenClawQuery(job.config as OpenClawQueryConfig, job.id, job.name, cronTab);
           break;
         case 'file-operation':
           await this.executeFileOperation(job.config as FileOperationConfig);
@@ -493,7 +496,8 @@ export class CronManager {
   private async executeOpenClawQuery(
     config: OpenClawQueryConfig,
     jobId: string,
-    jobName: string
+    jobName: string,
+    cronTab?: any
   ): Promise<void> {
     // Use background service if available and ready
     if (this.backgroundService?.isServiceReady()) {
@@ -538,12 +542,18 @@ export class CronManager {
       message: 'Using active tab (background service not available)',
     });
     
-    const view = this.plugin.getView?.();
-    if (!view) {
-      throw new Error('No active Ele view. Please open Ele view.');
+    // Use the provided cron tab or fall back to active tab
+    const tab = cronTab || (() => {
+      const view = this.plugin.getView?.();
+      if (!view) {
+        throw new Error('No active Ele view. Please open Ele view.');
+      }
+      return view.getActiveTab?.();
+    })();
+    
+    if (!tab) {
+      throw new Error('No active tab. Please create a conversation tab.');
     }
-
-    const tab = view.getActiveTab?.();
     if (!tab?.service) {
       throw new Error('No active service. Please create a conversation tab.');
     }
@@ -747,6 +757,54 @@ export class CronManager {
         reject(error);
       }
     });
+  }
+
+  /**
+   * Ensure a dedicated cron tab exists for job execution
+   * This tab is not counted toward max conversation limit
+   */
+  private async ensureCronTab(): Promise<any> {
+    const view = this.plugin.getView?.();
+    if (!view) {
+      throw new Error('No Ele view available');
+    }
+
+    const tabManager = view.getTabManager?.();
+    if (!tabManager) {
+      throw new Error('No tab manager available');
+    }
+
+    // Look for existing cron tab
+    const tabs = tabManager.getOpenTabs?.() || [];
+    for (const tab of tabs) {
+      const conversation = tab.state?.getCurrentConversation?.();
+      if (conversation?.title === '🤖 Cron' || conversation?.id?.startsWith('cron-')) {
+        // Activate the cron tab
+        await tabManager.switchToTab?.(tab.tabId);
+        return tab;
+      }
+    }
+
+    // Create new cron tab
+    const cronConversation = await this.plugin.createConversation('cron-' + Date.now());
+    await this.plugin.updateConversation(cronConversation.id, {
+      title: '🤖 Cron',
+      messages: [{
+        id: 'cron-welcome',
+        role: 'assistant',
+        content: '# 🤖 Cron Jobs\n\nThis is a dedicated conversation for cron job execution.\n\nAll cron job outputs will appear here.',
+        timestamp: Date.now(),
+      }],
+    });
+
+    // Create tab for the conversation
+    const newTab = await tabManager.createTab?.();
+    if (newTab && newTab.state) {
+      newTab.state.currentConversationId = cronConversation.id;
+      await newTab.loadConversation?.(cronConversation.id);
+    }
+
+    return newTab;
   }
 
   private async saveToFile(filePath: string, content: string, mode?: 'append' | 'overwrite' | 'prepend'): Promise<void> {
