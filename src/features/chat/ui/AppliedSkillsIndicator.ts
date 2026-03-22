@@ -53,7 +53,7 @@ export class AppliedSkillsIndicator {
       attr: { 'aria-label': 'Toggle all' }
     });
     const allExpanded = this.skills.every(s => this.expandedSkills.has(s.name));
-    setIcon(toggleAllBtn, allExpanded ? 'chevrons-down-up' : 'chevrons-up-down');
+    setIcon(toggleAllBtn, allExpanded ? 'chevrons-up' : 'chevrons-down');
     toggleAllBtn.addEventListener('click', () => {
       if (allExpanded) {
         this.expandedSkills.clear();
