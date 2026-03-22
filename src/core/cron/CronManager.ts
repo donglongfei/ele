@@ -9,7 +9,7 @@ import type ElePlugin from '../../main';
 import type { CronStorage } from '../storage/CronStorage';
 import { getVaultPath } from '../../utils/path';
 import { CronExpression, generateCronExpression } from './CronExpression';
-import { CronBackgroundService } from './CronBackgroundService';
+// import { CronBackgroundService } from './CronBackgroundService';
 import type {
   CronFrequency,
   CronJob,
@@ -66,13 +66,8 @@ export class CronManager {
     await this.storage.initialize();
 
     // Initialize background service for OpenClaw queries (optional)
-    try {
-      this.backgroundService = new CronBackgroundService(this.plugin, this.plugin.mcpManager);
-      await this.backgroundService.initialize();
-    } catch (err) {
-      console.warn('[CronManager] Background service not available:', err);
-      this.backgroundService = null;
-    }
+    // Note: Disabled for now due to initialization issues - will use fallback to active tab
+    this.backgroundService = null;
 
     // Schedule all enabled jobs
     const jobs = this.storage.getJobs();
