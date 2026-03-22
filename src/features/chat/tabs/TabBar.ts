@@ -56,14 +56,24 @@ export class TabBar {
       stateClass = 'ele-tab-badge-streaming';
     }
 
+    // Check if this is the cron tab
+    const isCronTab = item.title === '🤖 Cron' || item.id.startsWith('cron-');
+    const displayText = isCronTab ? '🤖' : String(item.index);
+    const tooltipTitle = isCronTab ? '🤖 Cron Jobs' : item.title;
+
     const badgeEl = this.containerEl.createDiv({
       cls: `ele-tab-badge ${stateClass}`,
-      text: String(item.index),
+      text: displayText,
     });
 
+    // Add special class for cron tab
+    if (isCronTab) {
+      badgeEl.addClass('ele-tab-badge-cron');
+    }
+
     // Tooltip with full title
-    badgeEl.setAttribute('aria-label', item.title);
-    badgeEl.setAttribute('title', item.title);
+    badgeEl.setAttribute('aria-label', tooltipTitle);
+    badgeEl.setAttribute('title', tooltipTitle);
 
     // Click handler to switch tab
     badgeEl.addEventListener('click', () => {
