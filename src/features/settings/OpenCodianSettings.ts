@@ -6,9 +6,10 @@ import { DEFAULT_KIMI_MODELS } from '../../core/types/models';
 import { getAvailableLocales, getLocaleDisplayName, setLocale, t } from '../../i18n';
 import type { Locale, TranslationKey } from '../../i18n/types';
 import type ElePlugin from '../../main';
-import { findNodeExecutable, formatContextLimit, getCustomModelIds, getEnhancedPath, getModelsFromEnvironment, parseContextLimit, parseEnvironmentVariables } from '../../utils/env';
+import { CronJobsSettingTab } from '../cron/CronJobsSettingTab';
 import { EleView } from '../chat/EleView';
 import { buildNavMappingText, parseNavMappings } from './keyboardNavigation';
+import { findNodeExecutable, formatContextLimit, getCustomModelIds, getEnhancedPath, getModelsFromEnvironment, parseContextLimit, parseEnvironmentVariables } from '../../utils/env';
 import { AgentSettings } from './ui/AgentSettings';
 import { CommandsAndSkillsManager } from './ui/CommandsAndSkillsManager';
 import { EnvSnippetManager } from './ui/EnvSnippetManager';
@@ -265,29 +266,12 @@ export class OpenCodianSettingTab extends PluginSettingTab {
       );
 
     if (this.plugin.settings.enableAutoTitleGeneration) {
-      new Setting(containerEl)
+      const titleModelSetting = new Setting(containerEl)
         .setName(t('settings.titleModel.name'))
-        .setDesc(t('settings.titleModel.desc'))
-        .addDropdown((dropdown) => {
-          // Add "Auto" option (empty string = use default logic)
-          dropdown.addOption('', t('settings.titleModel.auto'));
-
-          // Get available models from environment or defaults
-          const envVars = parseEnvironmentVariables(this.plugin.settings.environmentVariables);
-          const customModels = getModelsFromEnvironment(envVars);
-          const models = customModels.length > 0 ? customModels : DEFAULT_KIMI_MODELS;
-
-          for (const model of models) {
-            dropdown.addOption(model.value, model.label);
-          }
-
-          dropdown
-            .setValue(this.plugin.settings.titleGenerationModel || '')
-            .onChange(async (value) => {
-              this.plugin.settings.titleGenerationModel = value;
-              await this.plugin.saveSettings();
-            });
-        });
+        .setDesc(t('settings.titleModel.desc'));
+      
+      // Async load models for dropdown
+      void this.loadTitleModelDropdown(titleModelSetting);
     }
 
     new Setting(containerEl)
@@ -438,6 +422,13 @@ export class OpenCodianSettingTab extends PluginSettingTab {
 
     const mcpContainer = containerEl.createDiv({ cls: 'opencodian-mcp-container' });
     new McpSettingsManager(mcpContainer, this.plugin);
+
+    // Cron Jobs Section
+    new Setting(containerEl).setName('Cron Jobs').setHeading();
+
+    const cronJobsContainer = containerEl.createDiv({ cls: 'cron-jobs-setting' });
+    const cronJobsTab = new CronJobsSettingTab(this.app, this.plugin);
+    cronJobsTab.display(cronJobsContainer);
 
     new Setting(containerEl).setName(t('settings.safety')).setHeading();
 
@@ -849,6 +840,30 @@ export class OpenCodianSettingTab extends PluginSettingTab {
     } catch {
       statusEl.innerHTML = '⚠️ <span style="color: var(--text-warning);">Could not check Gateway status</span>';
     }
+  }
+
+  /**
+   * Load title model dropdown with models from Gateway.
+   */
+  private async loadTitleModelDropdown(setting: Setting): Promise<void> {
+    // Get models from Gateway or fallback
+    const models = await this.plugin.getModelsFromGateway();
+    
+    setting.addDropdown((dropdown) => {
+      // Add "Auto" option (empty string = use default logic)
+      dropdown.addOption('', t('settings.titleModel.auto'));
+
+      for (const model of models) {
+        dropdown.addOption(model.value, model.label);
+      }
+
+      dropdown
+        .setValue(this.plugin.settings.titleGenerationModel || '')
+        .onChange(async (value) => {
+          this.plugin.settings.titleGenerationModel = value;
+          await this.plugin.saveSettings();
+        });
+    });
   }
 
 }

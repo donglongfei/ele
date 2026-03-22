@@ -20,6 +20,7 @@ import { Notice } from 'obsidian';
 
 import type OpenCodianPlugin from '../../main';
 import { getActionDescription } from '../security';
+import { TOOL_ASK_USER_QUESTION } from '../tools/toolNames';
 import type {
   ApprovalDecision,
   ChatMessage,
@@ -102,6 +103,10 @@ export class OpenClawService {
   private reconnectDelay = 1000; // Start with 1 second
   private isAuthenticated = false;  // Track auth state
 
+  // Ready state listeners for notifying when connection becomes ready
+  private readyStateListeners: Set<(ready: boolean) => void> = new Set();
+  private lastReadyState = false;
+
   // Session manager for multi-conversation support
   readonly sessionManager: OpenClawSessionManager;
 
@@ -162,6 +167,8 @@ export class OpenClawService {
       this.ws.onclose = () => {
         console.log('[OpenClawService] Disconnected from Gateway');
         this.connectionPromise = null;
+        this.isAuthenticated = false;
+        this.notifyReadyStateChange(); // Notify listeners that we're no longer ready
         this.handleDisconnect();
       };
     });
@@ -301,6 +308,7 @@ export class OpenClawService {
           }
 
           this.connectionPromise = null;
+          this.notifyReadyStateChange(); // Notify listeners that we're ready
           resolve();
         }
       });
@@ -394,7 +402,7 @@ export class OpenClawService {
         this.handleAgentThinking(msg.payload);
         break;
       case 'tool.call':
-        this.handleToolCall(msg.payload);
+        void this.handleToolCall(msg.payload);
         break;
       case 'tool.result':
         this.handleToolResult(msg.payload);
@@ -421,7 +429,7 @@ export class OpenClawService {
             break;
           case 'tool':
             // Tool event
-            this.handleToolCall(msg.payload);
+            void this.handleToolCall(msg.payload);
             break;
           case 'health':
           case 'tick':
@@ -521,10 +529,47 @@ export class OpenClawService {
     }
   }
 
-  private handleToolCall(payload: any): void {
+  private async handleToolCall(payload: any): Promise<void> {
     const sessionKey = payload.sessionKey || payload.data?.sessionKey;
     if (!sessionKey) return;
-    
+
+    // Check if this is an AskUserQuestion tool call
+    const toolName = payload.tool || payload.name;
+    const toolId = payload.id;
+    if (toolName === TOOL_ASK_USER_QUESTION && this.askUserQuestionCallback && toolId) {
+      // Extract input from payload
+      const input = payload.arguments || payload.input || {};
+
+      try {
+        // Invoke the callback to get user answers
+        const answers = await this.askUserQuestionCallback(input);
+
+        // Send the result back to the Gateway
+        if (answers) {
+          this.sendCommand('tool.result', {
+            id: toolId,
+            output: answers,
+            isError: false,
+          });
+        } else {
+          // User cancelled
+          this.sendCommand('tool.result', {
+            id: toolId,
+            output: { error: 'User declined to answer' },
+            isError: true,
+          });
+        }
+      } catch (error) {
+        console.error('[OpenClawService] AskUserQuestion error:', error);
+        this.sendCommand('tool.result', {
+          id: toolId,
+          output: { error: error instanceof Error ? error.message : 'Unknown error' },
+          isError: true,
+        });
+      }
+      return;
+    }
+
     const chunk = this.transformToStreamChunk('tool_use', payload);
     if (chunk) {
       this.emitChunkForSession(sessionKey, chunk);
@@ -886,10 +931,67 @@ export class OpenClawService {
   }
 
   /**
-   * Dynamic configuration: set model
+   * Dynamic configuration: set model for a specific session.
+   * WebChat clients cannot use sessions.patch, so we use chat.send with /model command.
    */
-  async setModel(model: string): Promise<void> {
-    await this.sendCommand('config.setModel', { model });
+  async setModel(model: string, channelKey?: string): Promise<void> {
+    const session = channelKey
+      ? this.sessionManager.getSession(channelKey)
+      : this.sessionManager.getActiveSession();
+    
+    if (!session) {
+      console.error('[OpenClawService] setModel: No active session found');
+      throw new Error('No active session');
+    }
+
+    console.log(`[OpenClawService] Setting model: ${model} for session: ${session.channelKey}`);
+    
+    // WebChat clients cannot use sessions.patch
+    // We send the model change as a system command via chat.send
+    // The /model command is supported by OpenClaw for changing models
+    await this.sendCommand('chat.send', {
+      sessionKey: session.channelKey,
+      idempotencyKey: `model-change-${Date.now()}`,
+      message: `/model ${model}`
+    });
+    
+    // Store in session manager for tracking
+    this.sessionManager.setModel(session.channelKey, model);
+  }
+
+  /**
+   * Fetch available models from the Gateway.
+   * Returns an array of models with value, label, and description.
+   */
+  async getModels(): Promise<{ value: string; label: string; description: string }[]> {
+    try {
+      const response = await this.sendCommand('models.list', {});
+      
+      // Handle different response formats from Gateway
+      const models = response.models || response;
+      
+      if (!Array.isArray(models)) {
+        console.warn('[OpenClawService] Unexpected models.list response:', response);
+        return [];
+      }
+
+      // Transform Gateway model format to Ele's format
+      return models.map((model: any) => {
+        const modelId = model.id || model.value || model.name || model;
+        const label = model.label || model.name || modelId;
+        const description = model.description || 
+          (model.provider ? `Provider: ${model.provider}` : 'Available model');
+        
+        return {
+          value: modelId,
+          label: label,
+          description: description,
+        };
+      });
+    } catch (error) {
+      console.error('[OpenClawService] Failed to fetch models:', error);
+      return [];
+    }
   }
 
   /**
@@ -1278,11 +1380,32 @@ export class OpenClawService {
   }
 
   onReadyStateChange(listener: (ready: boolean) => void): () => void {
+    // Add listener
+    this.readyStateListeners.add(listener);
+    
     // Immediately call with current state
     listener(this.isReady());
 
-    // Return no-op unsubscribe (TODO: implement proper state tracking)
-    return () => {};
+    // Return unsubscribe function
+    return () => {
+      this.readyStateListeners.delete(listener);
+    };
+  }
+
+  private notifyReadyStateChange(): void {
+    const currentReadyState = this.isReady();
+    if (currentReadyState === this.lastReadyState) {
+      return; // No change, don't notify
+    }
+    this.lastReadyState = currentReadyState;
+    
+    for (const listener of this.readyStateListeners) {
+      try {
+        listener(currentReadyState);
+      } catch {
+        // Ignore listener errors
+      }
+    }
   }
 
   setPendingResumeAt(_uuid: string | undefined): void {

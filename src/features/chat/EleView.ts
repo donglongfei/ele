@@ -4,6 +4,7 @@ import { ItemView, Notice, setIcon } from 'obsidian';
 import { VIEW_TYPE_ELE } from '../../core/types';
 import type ElePlugin from '../../main';
 import { LOGO_SVG } from './constants';
+import { ModelSelector } from './ui/InputToolbar';
 import { TabBar, TabManager, updatePlanModeUI } from './tabs';
 import type { TabData, TabId } from './tabs/types';
 
@@ -80,8 +81,9 @@ export class EleView extends ItemView {
   /** Refreshes the model selector display (used after env var changes). */
   refreshModelSelector(): void {
     const activeTab = this.tabManager?.getActiveTab();
-    activeTab?.ui.modelSelector?.updateDisplay();
-    activeTab?.ui.modelSelector?.renderOptions();
+    // Clear the shared cache and reload Gateway models
+    ModelSelector.clearSharedCache();
+    void activeTab?.ui.modelSelector?.refreshModels();
   }
 
   /** Updates hidden slash commands on all tabs (used after settings change). */

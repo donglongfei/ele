@@ -175,6 +175,12 @@ export class EleService {
     const vaultPath = getVaultPath(plugin.app);
     if (vaultPath) {
       this.openClawService = new OpenClawService(plugin, vaultPath);
+      
+      // Subscribe to OpenClaw ready state changes and forward to our listeners
+      this.openClawService.onReadyStateChange((ready) => {
+        console.log('[EleService] OpenClaw ready state changed:', ready);
+        this.notifyReadyStateChange();
+      });
     }
   }
 
@@ -720,7 +726,15 @@ export class EleService {
   }
 
   isPersistentQueryActive(): boolean {
-    return this.persistentQuery !== null && !this.shuttingDown;
+    // For SDK mode: check persistent query
+    if (this.persistentQuery !== null && !this.shuttingDown) {
+      return true;
+    }
+    // For OpenClaw mode: check Gateway connection
+    if (this.openClawService?.isReady()) {
+      return true;
+    }
+    return false;
   }
 
   /**
@@ -992,7 +1006,10 @@ export class EleService {
     if (this.currentConfig && selectedModel !== this.currentConfig.model) {
       const resolved = resolveModelWithBetas(selectedModel, show1MModel);
       try {
-        await this.persistentQuery.setModel(resolved.model);
+        // Get active session channelKey for per-session model setting
+        const activeSession = this.openClawService?.sessionManager.getActiveSession();
+        const channelKey = activeSession?.channelKey;
+        await this.persistentQuery.setModel(resolved.model, channelKey);
         this.currentConfig.model = selectedModel;
       } catch {
         new Notice('Failed to update model');
@@ -1401,6 +1418,28 @@ export class EleService {
    */
   get sessionManager() {
     return this.openClawService?.sessionManager ?? null;
+  }
+
+  /**
+   * Fetch available models from the OpenClaw Gateway.
+   * Returns empty array if Gateway is unavailable.
+   */
+  async getModels(): Promise<{ value: string; label: string; description: string }[]> {
+    if (!this.openClawService) {
+      return [];
+    }
+    return this.openClawService.getModels();
+  }
+
+  /**
+   * Set model for a specific session.
+   * Uses sessions.patch to set modelOverride for per-session model configuration.
+   */
+  async setModel(model: string, channelKey?: string): Promise<void> {
+    if (!this.openClawService) {
+      throw new Error('OpenClaw service not initialized');
+    }
+    return this.openClawService.setModel(model, channelKey);
   }
 
   /**

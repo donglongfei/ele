@@ -50,6 +50,8 @@ import { SESSIONS_PATH, SessionStorage } from './SessionStorage';
 import { SKILLS_PATH, SkillStorage } from './SkillStorage';
 import { COMMANDS_PATH, SlashCommandStorage } from './SlashCommandStorage';
 import { VaultFileAdapter } from './VaultFileAdapter';
+import { CronStorage } from './CronStorage';
+import { getVaultPath } from '../../utils/path';
 
 /** Base path for all OpenCodian storage. */
 export const OPENCODE_PATH = '.ele';
@@ -127,6 +129,7 @@ export class StorageService {
   readonly sessions: SessionStorage;
   readonly mcp: McpStorage;
   readonly agents: AgentVaultStorage;
+  readonly cron: CronStorage;
 
   private adapter: VaultFileAdapter;
   private plugin: Plugin;
@@ -144,6 +147,8 @@ export class StorageService {
     this.sessions = new SessionStorage(this.adapter);
     this.mcp = new McpStorage(this.adapter);
     this.agents = new AgentVaultStorage(this.adapter);
+    const vaultPath = getVaultPath(this.app);
+    this.cron = new CronStorage(vaultPath || '');
   }
 
   async initialize(): Promise<CombinedSettings> {

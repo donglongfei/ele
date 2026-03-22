@@ -301,11 +301,16 @@ export async function initializeTabService(
       service.sessionManager.setActiveSession(tab.state.pendingChannelKey);
       console.log('[initializeTabService] Set active session to:', tab.state.pendingChannelKey);
       
-      // Sync reasoning and thinking level settings to OpenClaw Gateway
+      // Sync settings to OpenClaw Gateway
       // This ensures the session uses the current plugin settings
       try {
         const session = service.sessionManager.getActiveSession();
         if (session) {
+          // Sync model setting
+          const currentModel = plugin.settings.model;
+          await service.setModel(currentModel, session.channelKey);
+          console.log('[initializeTabService] Synced model:', currentModel);
+          
           // Sync reasoning setting
           const reasoningEnabled = plugin.settings.reasoningEnabled ?? false;
           await service.setReasoning(reasoningEnabled, session.channelKey);
@@ -507,6 +512,33 @@ function initializeInputToolbar(tab: TabData, plugin: ElePlugin): void {
       show1MModel: plugin.settings.show1MModel,
     }),
     getEnvironmentVariables: () => plugin.getActiveEnvironmentVariables(),
+    getModelsFromGateway: async () => {
+      try {
+        // Ensure service is initialized
+        if (!tab.service) {
+          await initializeTabService(tab, plugin, plugin.mcpManager);
+        }
+        
+        if (!tab.service) {
+          console.log('[Tab] getModelsFromGateway: no service available');
+          return [];
+        }
+        
+        // Check if service is ready (Gateway connected)
+        if (!tab.service.isReady()) {
+          console.log('[Tab] getModelsFromGateway: service not ready yet');
+          return [];
+        }
+        
+        console.log('[Tab] getModelsFromGateway: fetching from Gateway...');
+        const models = await tab.service.getModels();
+        console.log('[Tab] getModelsFromGateway: got', models.length, 'models');
+        return models;
+      } catch (error) {
+        console.warn('[Tab] Failed to fetch models from Gateway:', error);
+        return [];
+      }
+    },
     onModelChange: async (model: ClaudeModel) => {
       plugin.settings.model = model;
       const isDefaultModel = DEFAULT_CLAUDE_MODELS.find((m) => m.value === model);
@@ -523,18 +555,36 @@ function initializeInputToolbar(tab: TabData, plugin: ElePlugin): void {
 
       // Sync model change to OpenClaw Gateway
       try {
+        console.log('[Tab] onModelChange: starting model sync for', model);
+        
         if (!tab.service) {
+          console.log('[Tab] onModelChange: service not ready, initializing...');
           await initializeTabService(tab, plugin, plugin.mcpManager);
         }
         
         if (!tab.service) {
-          console.error('[Tab] tab.service is null for model change');
+          console.error('[Tab] onModelChange: tab.service is null after init attempt');
           return;
         }
         
-        await tab.service.setModel(model);
+        // Get or create active session for per-session model setting
+        let session = tab.service.sessionManager.getActiveSession();
+        
+        // If no active session, create one using the conversation ID
+        if (!session) {
+          const conversationId = tab.state.currentConversationId || `temp-${Date.now()}`;
+          const channelKey = `agent:main:obsidian-${conversationId}`;
+          console.log('[Tab] onModelChange: Creating new session:', channelKey);
+          session = tab.service.sessionManager.createSession(channelKey, '新对话');
+          tab.service.sessionManager.setActiveSession(channelKey);
+        }
+        
+        console.log('[Tab] onModelChange: calling setModel with', model, session.channelKey);
+        await tab.service.setModel(model, session.channelKey);
+        console.log('[Tab] onModelChange: Model set successfully');
       } catch (error) {
-        console.error('[Tab] Failed to sync model to OpenClaw:', error);
+        console.error('[Tab] onModelChange: Failed to sync model:', error);
+        console.error('[Tab] onModelChange: Stack:', error instanceof Error ? error.stack : 'no stack');
       }
 
       // Recalculate context usage percentage for the new model's context window

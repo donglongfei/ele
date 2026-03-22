@@ -202,29 +202,12 @@ export class ClaudianSettingTab extends PluginSettingTab {
       );
 
     if (this.plugin.settings.enableAutoTitleGeneration) {
-      new Setting(containerEl)
+      const titleModelSetting = new Setting(containerEl)
         .setName(t('settings.titleModel.name'))
-        .setDesc(t('settings.titleModel.desc'))
-        .addDropdown((dropdown) => {
-          // Add "Auto" option (empty string = use default logic)
-          dropdown.addOption('', t('settings.titleModel.auto'));
-
-          // Get available models from environment or defaults
-          const envVars = parseEnvironmentVariables(this.plugin.settings.environmentVariables);
-          const customModels = getModelsFromEnvironment(envVars);
-          const models = customModels.length > 0 ? customModels : DEFAULT_KIMI_MODELS;
-
-          for (const model of models) {
-            dropdown.addOption(model.value, model.label);
-          }
-
-          dropdown
-            .setValue(this.plugin.settings.titleGenerationModel || '')
-            .onChange(async (value) => {
-              this.plugin.settings.titleGenerationModel = value;
-              await this.plugin.saveSettings();
-            });
-        });
+        .setDesc(t('settings.titleModel.desc'));
+      
+      // Async load models for dropdown
+      void this.loadTitleModelDropdown(titleModelSetting);
     }
 
     new Setting(containerEl)
@@ -673,6 +656,30 @@ export class ClaudianSettingTab extends PluginSettingTab {
     } catch {
       // Silently ignore restart failures - changes will apply on next conversation
     }
+  }
+
+  /**
+   * Load title model dropdown with models from Gateway.
+   */
+  private async loadTitleModelDropdown(setting: Setting): Promise<void> {
+    // Get models from Gateway or fallback
+    const models = await this.plugin.getModelsFromGateway();
+    
+    setting.addDropdown((dropdown) => {
+      // Add "Auto" option (empty string = use default logic)
+      dropdown.addOption('', t('settings.titleModel.auto'));
+
+      for (const model of models) {
+        dropdown.addOption(model.value, model.label);
+      }
+
+      dropdown
+        .setValue(this.plugin.settings.titleGenerationModel || '')
+        .onChange(async (value) => {
+          this.plugin.settings.titleGenerationModel = value;
+          await this.plugin.saveSettings();
+        });
+    });
   }
 
 }

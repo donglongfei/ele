@@ -31,6 +31,8 @@ export interface ToolbarCallbacks {
   onPermissionModeChange: (mode: PermissionMode) => Promise<void>;
   getSettings: () => ToolbarSettings;
   getEnvironmentVariables?: () => string;
+  /** Fetch models from OpenClaw Gateway. Returns empty array if unavailable. */
+  getModelsFromGateway?: () => Promise<{ value: string; label: string; description: string }[]>;
 }
 
 export class ModelSelector {
@@ -39,29 +41,97 @@ export class ModelSelector {
   private dropdownEl: HTMLElement | null = null;
   private callbacks: ToolbarCallbacks;
   private isReady = false;
+  private gatewayModels: { value: string; label: string; description: string }[] | null = null;
+  private isLoadingGatewayModels = false;
+  private retryInterval: number | null = null;
+  
+  // Static shared cache for Gateway models across all selectors
+  private static sharedGatewayModels: { value: string; label: string; description: string }[] | null = null;
+  private static isGloballyLoading = false;
 
   constructor(parentEl: HTMLElement, callbacks: ToolbarCallbacks) {
     this.callbacks = callbacks;
     this.container = parentEl.createDiv({ cls: 'ele-model-selector' });
     this.render();
+    // Don't immediately load Gateway models - wait for service to be ready
+    // This prevents excessive requests during tab creation
+  }
+
+  private async loadGatewayModels(): Promise<void> {
+    if (!this.callbacks.getModelsFromGateway) return;
+    
+    // Use shared cache if available
+    if (ModelSelector.sharedGatewayModels) {
+      console.log('[ModelSelector] Using cached Gateway models');
+      this.gatewayModels = ModelSelector.sharedGatewayModels;
+      this.renderOptions();
+      this.updateDisplay();
+      return;
+    }
+    
+    // Prevent concurrent loading across all selectors
+    if (ModelSelector.isGloballyLoading) {
+      console.log('[ModelSelector] Gateway models already loading elsewhere, waiting...');
+      // Wait for loading to complete
+      while (ModelSelector.isGloballyLoading) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      // Use the cached result
+      if (ModelSelector.sharedGatewayModels) {
+        this.gatewayModels = ModelSelector.sharedGatewayModels;
+        this.renderOptions();
+        this.updateDisplay();
+      }
+      return;
+    }
+    
+    console.log('[ModelSelector] Loading Gateway models...');
+    this.isLoadingGatewayModels = true;
+    ModelSelector.isGloballyLoading = true;
+    
+    try {
+      const models = await this.callbacks.getModelsFromGateway();
+      console.log('[ModelSelector] Gateway models response:', models);
+      if (models.length > 0) {
+        // Store in shared cache
+        ModelSelector.sharedGatewayModels = models;
+        this.gatewayModels = models;
+        console.log('[ModelSelector] Using Gateway models:', models.map(m => m.label).join(', '));
+        this.renderOptions();
+        this.updateDisplay(); // Also update the button text
+      } else {
+        console.log('[ModelSelector] Gateway returned empty models, using defaults');
+      }
+    } catch (error) {
+      console.warn('[ModelSelector] Failed to load Gateway models:', error);
+    } finally {
+      this.isLoadingGatewayModels = false;
+      ModelSelector.isGloballyLoading = false;
+    }
   }
 
   private getAvailableModels() {
-    let models: { value: string; label: string; description: string }[] = [];
+    // Priority 1: Gateway models (fetched from OpenClaw)
+    const cachedModels = this.gatewayModels || ModelSelector.sharedGatewayModels;
+    if (cachedModels && cachedModels.length > 0) {
+      console.log('[ModelSelector] Using Gateway models:', cachedModels.map(m => m.label).join(', '));
+      return cachedModels;
+    }
 
+    // Priority 2: Environment variables (custom models)
     if (this.callbacks.getEnvironmentVariables) {
       const envVarsStr = this.callbacks.getEnvironmentVariables();
       const envVars = parseEnvironmentVariables(envVarsStr);
       const customModels = getModelsFromEnvironment(envVars);
-
       if (customModels.length > 0) {
-        models = customModels;
-      } else {
-        models = [...DEFAULT_CLAUDE_MODELS];
+        console.log('[ModelSelector] Using env var models:', customModels.map(m => m.label).join(', '));
+        return customModels;
       }
-    } else {
-      models = [...DEFAULT_CLAUDE_MODELS];
     }
+
+    // Priority 3: Default hardcoded models
+    console.log('[ModelSelector] Using default hardcoded models');
+    let models = [...DEFAULT_CLAUDE_MODELS];
 
     // When 1M context is enabled, update sonnet label to show "(1M)"
     const settings = this.callbacks.getSettings();
@@ -102,6 +172,56 @@ export class ModelSelector {
   setReady(ready: boolean) {
     this.isReady = ready;
     this.buttonEl?.toggleClass('ready', ready);
+    console.log('[ModelSelector] setReady:', ready, 'sharedCache:', !!ModelSelector.sharedGatewayModels, 'localCache:', !!this.gatewayModels);
+    
+    // Only try to load Gateway models once when service becomes ready
+    // and we haven't loaded them yet (check both local and shared cache)
+    const hasCachedModels = this.gatewayModels || ModelSelector.sharedGatewayModels;
+    const shouldLoad = ready && !hasCachedModels && !this.isLoadingGatewayModels && !ModelSelector.isGloballyLoading;
+    console.log('[ModelSelector] shouldLoad:', shouldLoad, 'hasCachedModels:', !!hasCachedModels);
+    
+    if (shouldLoad) {
+      console.log('[ModelSelector] Triggering Gateway model load in 500ms');
+      setTimeout(() => {
+        void this.loadGatewayModels();
+      }, 500);
+    }
+    
+    // If we have cached models but this instance doesn't have them, copy from shared
+    if (ready && ModelSelector.sharedGatewayModels && !this.gatewayModels) {
+      console.log('[ModelSelector] Copying from shared cache');
+      this.gatewayModels = ModelSelector.sharedGatewayModels;
+      this.renderOptions();
+      this.updateDisplay();
+    }
+    
+    // Clear retry interval if service is ready
+    if (ready && this.retryInterval) {
+      clearInterval(this.retryInterval);
+      this.retryInterval = null;
+    }
+  }
+
+  /** Force refresh models from Gateway */
+  async refreshModels(): Promise<void> {
+    // Clear both local and shared cache
+    this.gatewayModels = null;
+    ModelSelector.sharedGatewayModels = null;
+    await this.loadGatewayModels();
+  }
+
+  /** Cleanup resources */
+  cleanup(): void {
+    if (this.retryInterval) {
+      clearInterval(this.retryInterval);
+      this.retryInterval = null;
+    }
+  }
+
+  /** Clear shared Gateway models cache (call when environment changes) */
+  static clearSharedCache(): void {
+    ModelSelector.sharedGatewayModels = null;
+    console.log('[ModelSelector] Shared Gateway models cache cleared');
   }
 
   renderOptions() {

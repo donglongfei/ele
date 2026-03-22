@@ -25,6 +25,7 @@ export interface OpenClawSession {
   lastMessageAt: number;
   preview: string;
   thinkingLevel: string; // Session-specific thinking level (off | low | medium | high | adaptive)
+  model: string | null; // Session-specific model override
 }
 
 interface OpenClawSessionsFile {
@@ -69,6 +70,7 @@ export class OpenClawSessionManager {
       lastMessageAt: Date.now(),
       preview: '',
       thinkingLevel: 'low', // Default thinking level
+      model: null, // No model override by default
     };
 
     this.sessions.set(channelKey, session);
@@ -163,6 +165,25 @@ export class OpenClawSessionManager {
     if (session) {
       session.thinkingLevel = level;
       console.log(`[OpenClawSessionManager] Session ${channelKey} thinking level set to: ${level}`);
+    }
+  }
+
+  /**
+   * Get model for a session
+   */
+  getModel(channelKey: string): string | null {
+    const session = this.sessions.get(channelKey);
+    return session?.model || null;
+  }
+
+  /**
+   * Set model for a session
+   */
+  setModel(channelKey: string, model: string): void {
+    const session = this.sessions.get(channelKey);
+    if (session) {
+      session.model = model;
+      console.log(`[OpenClawSessionManager] Session ${channelKey} model set to: ${model}`);
     }
   }
 

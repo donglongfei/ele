@@ -143,7 +143,7 @@
     },
     "commandsAndSkills": {
       "name": "Commands and Skills",
-      "desc": "Manage Commands, Obsidian Skills, and OpenClaw Skills in one place. Commands (.opencode/commands/), Obsidian Skills (.opencode/skills/), and OpenClaw Skills (~/.openclaw/skills/)."
+      "desc": "Manage Commands, Obsidian Skills, and OpenClaw Skills in one place. Commands (.opencode/commands/), Obsidian Skills (.ele/skills/), and OpenClaw Skills (~/.openclaw/skills/)."
     },
     "hiddenSlashCommands": {
       "name": "Hidden Commands",

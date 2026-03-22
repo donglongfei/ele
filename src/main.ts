@@ -9,6 +9,7 @@ import type { Editor, MarkdownView } from 'obsidian';
 import { addIcon,Notice, Plugin } from 'obsidian';
 
 import { AgentManager } from './core/agents';
+import { CronManager } from './core/cron';
 import { McpServerManager } from './core/mcp';
 import { StorageService } from './core/storage';
 import { isSubagentToolName, TOOL_TASK } from './core/tools/toolNames';
@@ -49,6 +50,7 @@ export default class ElePlugin extends Plugin {
   settings: EleSettings;
   mcpManager: McpServerManager;
   agentManager: AgentManager;
+  cronManager: CronManager;
   storage: StorageService;
   private conversations: Conversation[] = [];
   private runtimeEnvironmentVariables = '';
@@ -68,6 +70,10 @@ export default class ElePlugin extends Plugin {
     const vaultPath = (this.app.vault.adapter as any).basePath;
     this.agentManager = new AgentManager(vaultPath);
     await this.agentManager.loadAgents();
+
+    // Initialize cron manager
+    this.cronManager = new CronManager(this, this.storage.cron);
+    await this.cronManager.initialize();
 
     // Register view (both constants point to same string for compatibility)
     this.registerView(
@@ -191,9 +197,50 @@ export default class ElePlugin extends Plugin {
     });
 
     this.addSettingTab(new OpenCodianSettingTab(this.app, this));
+
+    // Cron job management commands
+    this.addCommand({
+      id: 'cron-list-jobs',
+      name: 'Cron: List jobs',
+      callback: () => {
+        this.listCronJobs();
+      },
+    });
+
+    this.addCommand({
+      id: 'cron-run-missed',
+      name: 'Cron: Run missed jobs',
+      callback: () => {
+        this.cronManager?.checkMissedJobs();
+        new Notice('Checked for missed jobs');
+      },
+    });
+
+    this.addCommand({
+      id: 'cron-refresh-file-jobs',
+      name: 'Cron: Refresh file-based jobs',
+      callback: async () => {
+        await this.cronManager?.loadFileBasedJobs();
+        new Notice('File-based cron jobs refreshed');
+      },
+    });
+
+    // Check missed jobs on window focus (e.g., after laptop wake)
+    this.registerDomEvent(window, 'focus', () => {
+      this.cronManager?.checkMissedJobs();
+    });
+
+    // Also check periodically every 5 minutes (as a backup)
+    const interval = window.setInterval(() => {
+      this.cronManager?.checkMissedJobs();
+    }, 5 * 60 * 1000);
+    this.registerInterval(interval);
   }
 
   async onunload() {
+    // Cleanup cron manager
+    this.cronManager?.cleanup();
+
     // Ensures state is saved even if Obsidian quits without calling onClose()
     for (const view of this.getAllViews()) {
       const tabManager = view.getTabManager();
@@ -1105,6 +1152,18 @@ export default class ElePlugin extends Plugin {
     return null;
   }
 
+  /** Lists all cron jobs in a notice. */
+  private listCronJobs(): void {
+    const jobs = this.cronManager?.getJobs() ?? [];
+    if (jobs.length === 0) {
+      new Notice('No cron jobs configured');
+      return;
+    }
+    const enabled = jobs.filter(j => j.enabled);
+    const disabled = jobs.filter(j => !j.enabled);
+    new Notice(`${jobs.length} job(s): ${enabled.length} enabled, ${disabled.length} disabled`);
+  }
+
   /**
    * Gets SDK supported commands from any ready service.
    * The command list is the same for all services, so we just need one ready.
@@ -1121,5 +1180,28 @@ export default class ElePlugin extends Plugin {
       }
     }
     return [];
+  }
+
+  /**
+   * Gets available models from Gateway.
+   * Used by settings to populate model dropdowns.
+   */
+  async getModelsFromGateway(): Promise<{ value: string; label: string; description: string }[]> {
+    const view = this.getView();
+    const tabManager = view?.getTabManager();
+    const activeTab = tabManager?.getActiveTab();
+    
+    if (activeTab?.service?.isReady()) {
+      try {
+        return await activeTab.service.getModels();
+      } catch (error) {
+        console.warn('[ElePlugin] Failed to fetch models from Gateway:', error);
+      }
+    }
+    
+    // Fallback to environment variables or defaults
+    const envVars = parseEnvironmentVariables(this.settings.environmentVariables);
+    const customModels = getModelsFromEnvironment(envVars);
+    return customModels.length > 0 ? customModels : DEFAULT_KIMI_MODELS;
   }
 }

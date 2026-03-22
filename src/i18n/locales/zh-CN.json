@@ -143,7 +143,7 @@
     },
     "commandsAndSkills": {
       "name": "命令与技能",
-      "desc": "统一管理命令、Obsidian 技能和 OpenClaw 技能。命令 (.opencode/commands/)、Obsidian 技能 (.opencode/skills/)、OpenClaw 技能 (~/.openclaw/skills/)。"
+      "desc": "统一管理命令、Obsidian 技能和 OpenClaw 技能。命令 (.opencode/commands/)、Obsidian 技能 (.ele/skills/)、OpenClaw 技能 (~/.openclaw/skills/)。"
     },
     "hiddenSlashCommands": {
       "name": "隐藏命令",
