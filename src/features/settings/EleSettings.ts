@@ -86,6 +86,19 @@ export class ClaudianSettingTab extends PluginSettingTab {
     containerEl.empty();
     containerEl.addClass('ele-settings');
 
+    // Add Eleven logo at the top
+    const logoContainer = containerEl.createDiv('ele-logo-container');
+    logoContainer.style.textAlign = 'center';
+    logoContainer.style.marginBottom = '20px';
+    const logoImg = logoContainer.createEl('img', {
+      attr: {
+        src: this.plugin.manifest.dir + '/Eleven-Logo.svg',
+        alt: 'Eleven',
+        width: '100'
+      }
+    });
+    logoImg.style.maxWidth = '100px';
+
     setLocale(this.plugin.settings.locale);
 
     new Setting(containerEl)

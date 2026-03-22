@@ -6,5 +6,6 @@
   "description": "Embeds OpenClaw AI agent in your vault with Kimi K2.5 backend. Full agentic capabilities: file read/write, search, bash commands, and multi-step workflows.",
   "author": "Yishen Tu",
   "authorUrl": "https://github.com/YishenTu",
-  "isDesktopOnly": true
+  "isDesktopOnly": true,
+  "icon": "Eleven-Logo.png"
 }
