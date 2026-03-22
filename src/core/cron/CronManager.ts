@@ -548,6 +548,16 @@ export class CronManager {
     }
     
     this.emitLog({
+      id: `${jobId}-service-check`,
+      jobId,
+      jobName,
+      timestamp: Date.now(),
+      level: 'info',
+      message: 'Service check',
+      details: `isReady: ${tab.service.isReady?.() ?? 'unknown'}`,
+    });
+    
+    this.emitLog({
       id: `${jobId}-query-start`,
       jobId,
       jobName,
@@ -560,17 +570,19 @@ export class CronManager {
     const chunks: string[] = [];
     try {
       for await (const chunk of tab.service.query(config.prompt)) {
+        this.emitLog({
+          id: `${jobId}-chunk-${Date.now()}`,
+          jobId,
+          jobName,
+          timestamp: Date.now(),
+          level: 'info',
+          message: `Chunk type: ${chunk.type}`,
+          details: chunk.content?.substring(0, 100) || '(no content)',
+        });
         if (chunk.type === 'text') {
           chunks.push(chunk.content);
-          this.emitLog({
-            id: `${jobId}-chunk-${Date.now()}`,
-            jobId,
-            jobName,
-            timestamp: Date.now(),
-            level: 'info',
-            message: 'Received chunk',
-            details: `${chunk.content.length} chars`,
-          });
+        } else if (chunk.type === 'error') {
+          throw new Error(chunk.content);
         }
       }
     } catch (err) {
