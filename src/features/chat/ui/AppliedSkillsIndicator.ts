@@ -52,8 +52,17 @@ export class AppliedSkillsIndicator {
       cls: 'ele-applied-skills-toggle-all',
       attr: { 'aria-label': 'Toggle all' }
     });
+    toggleAllBtn.style.display = 'flex';
+    toggleAllBtn.style.alignItems = 'center';
+    toggleAllBtn.style.justifyContent = 'center';
+    toggleAllBtn.style.width = '28px';
+    toggleAllBtn.style.height = '28px';
+    toggleAllBtn.style.minWidth = '28px';
+    toggleAllBtn.style.flexShrink = '0';
+    
     const allExpanded = this.skills.every(s => this.expandedSkills.has(s.name));
-    setIcon(toggleAllBtn, allExpanded ? 'chevrons-up' : 'chevrons-down');
+    // Use valid Lucide icon names
+    setIcon(toggleAllBtn, allExpanded ? 'chevron-up' : 'chevron-down');
     toggleAllBtn.addEventListener('click', () => {
       if (allExpanded) {
         this.expandedSkills.clear();
@@ -77,7 +86,15 @@ export class AppliedSkillsIndicator {
       const skillHeaderEl = skillEl.createDiv({ cls: 'ele-applied-skill-header' });
       
       const toggleEl = skillHeaderEl.createSpan({ cls: 'ele-applied-skill-toggle' });
+      // Use valid Lucide icons
       setIcon(toggleEl, isExpanded ? 'chevron-down' : 'chevron-right');
+      
+      // Ensure toggle icon is visible
+      toggleEl.style.display = 'flex';
+      toggleEl.style.alignItems = 'center';
+      toggleEl.style.justifyContent = 'center';
+      toggleEl.style.width = '20px';
+      toggleEl.style.height = '20px';
       
       const nameEl = skillHeaderEl.createSpan({ cls: 'ele-applied-skill-name' });
       nameEl.setText(skill.name);
@@ -91,6 +108,13 @@ export class AppliedSkillsIndicator {
         cls: 'ele-applied-skill-remove',
         attr: { 'aria-label': 'Remove skill' }
       });
+      removeBtn.style.display = 'flex';
+      removeBtn.style.alignItems = 'center';
+      removeBtn.style.justifyContent = 'center';
+      removeBtn.style.width = '24px';
+      removeBtn.style.height = '24px';
+      removeBtn.style.minWidth = '24px';
+      removeBtn.style.flexShrink = '0';
       setIcon(removeBtn, 'x');
       removeBtn.addEventListener('click', (e) => {
         e.stopPropagation();
