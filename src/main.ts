@@ -237,6 +237,19 @@ export default class ElePlugin extends Plugin {
     });
 
     this.addCommand({
+      id: 'cron-open-live-logs',
+      name: 'Cron: Open live logs',
+      callback: () => {
+        const { CronLogModal } = require('./features/cron');
+        const modal = new CronLogModal(
+          this.app,
+          (listener) => this.cronManager?.onLog(listener) ?? (() => {})
+        );
+        modal.open();
+      },
+    });
+
+    this.addCommand({
       id: 'cron-refresh-file-jobs',
       name: 'Cron: Refresh file-based jobs',
       callback: async () => {

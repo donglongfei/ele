@@ -375,6 +375,9 @@ export class CronManager {
     const startedAt = Date.now();
 
     console.log(`[CronManager] Executing job "${job.name}"`);
+    
+    // Show notice to user
+    new Notice(`▶️ Cron job "${job.name}" started`, 3000);
 
     // Emit started log
     this.emitLog({
@@ -431,6 +434,7 @@ export class CronManager {
         details: `Duration: ${endedAt - startedAt}ms`,
       });
 
+      new Notice(`✅ Cron job "${job.name}" completed`, 5000);
       console.log(`[CronManager] Job "${job.name}" completed successfully`);
     } catch (error) {
       // Error
@@ -463,6 +467,7 @@ export class CronManager {
         details: errorMessage,
       });
 
+      new Notice(`❌ Cron job "${job.name}" failed: ${errorMessage.substring(0, 100)}`, 10000);
       console.error(`[CronManager] Job "${job.name}" failed:`, error);
     } finally {
       if (scheduled) {
