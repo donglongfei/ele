@@ -579,7 +579,7 @@ export class CronManager {
     });
     
     // Post to chat: job started
-    this.postToChat(`🤖 **Cron Job: ${jobName}**\n\n⏳ Executing...\n\n**Prompt:**\n${config.prompt.substring(0, 200)}${config.prompt.length > 200 ? '...' : ''}`, 'assistant', tab);
+    await this.postToChat(`🤖 **Cron Job: ${jobName}**\n\n⏳ Executing...\n\n**Prompt:**\n${config.prompt.substring(0, 200)}${config.prompt.length > 200 ? '...' : ''}`, 'assistant', tab);
     
     // Get conversation ID from active tab
     const conversationId = tab.state?.currentConversationId;
@@ -627,7 +627,7 @@ export class CronManager {
         message: 'Query failed',
         details: err instanceof Error ? err.message : String(err),
       });
-      this.postToChat(`❌ **Cron Job Failed: ${jobName}**\n\nError: ${err instanceof Error ? err.message : String(err)}`, 'assistant', tab);
+      await this.postToChat(`❌ **Cron Job Failed: ${jobName}**\n\nError: ${err instanceof Error ? err.message : String(err)}`, 'assistant', tab);
       throw err;
     }
 
@@ -647,7 +647,7 @@ export class CronManager {
     const outputPreview = result.substring(0, 500);
     const outputTruncated = result.length > 500 ? `${outputPreview}...\n\n*(truncated - full output: ${result.length} chars)*` : outputPreview;
     
-    this.postToChat(`✅ **Cron Job Completed: ${jobName}**\n\n**Response:**\n${outputTruncated}`, 'assistant', tab);
+    await this.postToChat(`✅ **Cron Job Completed: ${jobName}**\n\n**Response:**\n${outputTruncated}`, 'assistant', tab);
 
     if (config.targetFile) {
       this.emitLog({
@@ -660,7 +660,7 @@ export class CronManager {
         details: config.targetFile,
       });
       await this.saveToFile(config.targetFile, result, config.appendMode);
-      this.postToChat(`💾 Output saved to: ${config.targetFile}`, 'assistant', tab);
+      await this.postToChat(`💾 Output saved to: ${config.targetFile}`, 'assistant', tab);
     }
   }
 
@@ -849,8 +849,9 @@ export class CronManager {
 
   /**
    * Post a message to a specific tab or the active Ele chat tab
+   * Persists the message to storage and triggers UI update
    */
-  private postToChat(content: string, role: 'user' | 'assistant' = 'assistant', targetTab?: any): void {
+  private async postToChat(content: string, role: 'user' | 'assistant' = 'assistant', targetTab?: any): Promise<void> {
     let tab = targetTab;
     
     if (!tab) {
@@ -861,6 +862,9 @@ export class CronManager {
     
     if (!tab?.state) return;
     
+    const conversationId = tab.state.currentConversationId;
+    if (!conversationId) return;
+    
     const message: ChatMessage = {
       id: `cron-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       role,
@@ -868,6 +872,21 @@ export class CronManager {
       timestamp: Date.now(),
     };
     
+    // Add to state
     tab.state.addMessage(message);
+    
+    // Persist to storage (so message survives tab switches)
+    try {
+      const conversation = this.plugin.getConversation?.(conversationId);
+      if (conversation) {
+        const updatedMessages = [...(conversation.messages || []), message];
+        await this.plugin.updateConversation(conversationId, {
+          messages: updatedMessages,
+          updatedAt: Date.now(),
+        });
+      }
+    } catch (err) {
+      console.warn('[CronManager] Failed to persist message:', err);
+    }
   }
 }
