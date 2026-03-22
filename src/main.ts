@@ -241,9 +241,14 @@ export default class ElePlugin extends Plugin {
       name: 'Cron: Open live logs',
       callback: () => {
         const { CronLogModal } = require('./features/cron');
+        if (!this.cronManager) {
+          new Notice('Cron manager not available');
+          return;
+        }
         const modal = new CronLogModal(
           this.app,
-          (listener) => this.cronManager?.onLog(listener) ?? (() => {})
+          (listener) => this.cronManager?.onLog(listener) ?? (() => {}),
+          this.cronManager
         );
         modal.open();
       },

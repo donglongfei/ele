@@ -86,9 +86,14 @@ export class CronJobsSettingTab {
   }
 
   private openLogModal(): void {
+    if (!this.plugin.cronManager) {
+      new Notice('Cron manager not available');
+      return;
+    }
     const modal = new CronLogModal(
       this.app,
-      (listener) => this.plugin.cronManager?.onLog(listener) ?? (() => {})
+      (listener) => this.plugin.cronManager?.onLog(listener) ?? (() => {}),
+      this.plugin.cronManager
     );
     modal.open();
   }
