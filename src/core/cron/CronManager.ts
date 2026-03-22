@@ -8,6 +8,7 @@ import { randomUUID } from 'crypto';
 import type ElePlugin from '../../main';
 import type { CronStorage } from '../storage/CronStorage';
 import { getVaultPath } from '../../utils/path';
+import type { ChatMessage } from '../types';
 import { CronExpression, generateCronExpression } from './CronExpression';
 // import { CronBackgroundService } from './CronBackgroundService';
 import type {
@@ -567,6 +568,9 @@ export class CronManager {
       details: `Prompt: ${config.prompt.substring(0, 50)}...`,
     });
     
+    // Post to chat: job started
+    this.postToChat(`🤖 **Cron Job: ${jobName}**\n\n⏳ Executing...\n\n**Prompt:**\n${config.prompt.substring(0, 200)}${config.prompt.length > 200 ? '...' : ''}`);
+    
     // Get conversation ID from active tab
     const conversationId = tab.state?.currentConversationId;
     if (!conversationId) {
@@ -584,6 +588,8 @@ export class CronManager {
     });
 
     const chunks: string[] = [];
+    let responseMessageId: string | null = null;
+    
     try {
       for await (const chunk of tab.service.query(config.prompt, undefined, undefined, { conversationId })) {
         this.emitLog({
@@ -611,6 +617,7 @@ export class CronManager {
         message: 'Query failed',
         details: err instanceof Error ? err.message : String(err),
       });
+      this.postToChat(`❌ **Cron Job Failed: ${jobName}**\n\nError: ${err instanceof Error ? err.message : String(err)}`);
       throw err;
     }
 
@@ -625,6 +632,12 @@ export class CronManager {
       message: 'Query completed',
       details: `${result.length} chars received`,
     });
+    
+    // Post final result to chat
+    const outputPreview = result.substring(0, 500);
+    const outputTruncated = result.length > 500 ? `${outputPreview}...\n\n*(truncated - full output: ${result.length} chars)*` : outputPreview;
+    
+    this.postToChat(`✅ **Cron Job Completed: ${jobName}**\n\n**Response:**\n${outputTruncated}`);
 
     if (config.targetFile) {
       this.emitLog({
@@ -637,6 +650,7 @@ export class CronManager {
         details: config.targetFile,
       });
       await this.saveToFile(config.targetFile, result, config.appendMode);
+      this.postToChat(`💾 Output saved to: ${config.targetFile}`);
     }
   }
 
@@ -773,5 +787,25 @@ export class CronManager {
     } else {
       fs.writeFileSync(normalizedPath, content);
     }
+  }
+
+  /**
+   * Post a message to the active Ele chat tab
+   */
+  private postToChat(content: string, role: 'user' | 'assistant' = 'assistant'): void {
+    const view = this.plugin.getView?.();
+    if (!view) return;
+    
+    const tab = view.getActiveTab?.();
+    if (!tab?.state) return;
+    
+    const message: ChatMessage = {
+      id: `cron-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      role,
+      content,
+      timestamp: Date.now(),
+    };
+    
+    tab.state.addMessage(message);
   }
 }
