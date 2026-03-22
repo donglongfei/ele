@@ -648,6 +648,8 @@ export class CronManager {
     
     const vaultPath = (this.plugin.app.vault.adapter as any).basePath;
     
+    console.log('[CronManager] saveToFile:', { filePath, vaultPath });
+    
     // Normalize path: handle ${vault} prefix, ~ home, or relative paths
     let normalizedPath: string;
     if (filePath.startsWith('${vault}')) {
@@ -660,6 +662,8 @@ export class CronManager {
     } else {
       normalizedPath = filePath;
     }
+    
+    console.log('[CronManager] normalizedPath:', normalizedPath);
 
     // Ensure directory exists
     const dir = path.dirname(normalizedPath);
