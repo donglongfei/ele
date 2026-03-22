@@ -62,7 +62,7 @@ export class AppliedSkillsIndicator {
     });
 
     // Skills list
-    const listEl = this.containerEl.createDiv({ cls: 'ele-applied-skills-list' });
+    const listEl = this.skillsContainerEl.createDiv({ cls: 'ele-applied-skills-list' });
 
     for (const skill of this.skills) {
       const isExpanded = this.expandedSkills.has(skill.name);
