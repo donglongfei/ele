@@ -220,17 +220,44 @@ export class CronManager {
           // Check if a job with this name already exists
           const existing = this.storage.getJobs().find(j => j.name === parsed.config.name);
           if (!existing) {
+            // Build config based on job type
+            let config: CronJobConfig;
+            switch (parsed.config.type) {
+              case 'notification':
+                config = {
+                  message: parsed.config.prompt || parsed.prompt || 'Cron job completed',
+                  showBanner: true,
+                } as NotificationConfig;
+                break;
+              case 'file-operation':
+                config = {
+                  operation: 'scan',
+                  targetPath: parsed.config.targetFile || '${vault}',
+                } as FileOperationConfig;
+                break;
+              case 'script':
+                config = {
+                  scriptContent: parsed.config.prompt || parsed.prompt || '',
+                  timeoutMs: 30000,
+                } as ScriptConfig;
+                break;
+              case 'openclaw-query':
+              default:
+                config = {
+                  prompt: parsed.config.prompt || parsed.prompt || '',
+                  targetFile: parsed.config.targetFile || parsed.targetFile,
+                  appendMode: parsed.config.appendMode || parsed.appendMode,
+                  model: parsed.config.model,
+                } as OpenClawQueryConfig;
+                break;
+            }
+            
             await this.addJob(
               parsed.config.name || file.replace('.md', ''),
               parsed.config.description,
               parsed.config.frequency,
               parsed.config.type,
-              {
-                prompt: parsed.config.prompt || parsed.prompt || '',
-                targetFile: parsed.config.targetFile || parsed.targetFile,
-                appendMode: parsed.config.appendMode || parsed.appendMode,
-                model: parsed.config.model,
-              } as OpenClawQueryConfig,
+              config,
               parsed.config.cronExpression,
               parsed.config.enabled ?? true
             );
