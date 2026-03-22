@@ -63,6 +63,20 @@ export interface CronJobLog {
   timestamp?: number;
 }
 
+/** Real-time log entry for streaming job execution */
+export interface CronJobRealtimeLog {
+  id: string;
+  jobId: string;
+  jobName: string;
+  timestamp: number;
+  level: 'info' | 'warn' | 'error' | 'success';
+  message: string;
+  details?: string;
+}
+
+/** Log stream callback type */
+export type CronLogListener = (log: CronJobRealtimeLog) => void;
+
 export interface CronStorageData {
   version: number;
   jobs: CronJob[];

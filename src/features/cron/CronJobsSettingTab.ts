@@ -7,6 +7,7 @@ import { Notice, Setting } from 'obsidian';
 import type ElePlugin from '../../main';
 import type { CronJob } from '../../core/cron/types';
 import { CronJobModal } from './CronJobModal';
+import { CronLogPanel } from './CronLogPanel';
 
 export class CronJobsSettingTab {
   constructor(
@@ -66,7 +67,17 @@ export class CronJobsSettingTab {
       }
     }
 
-    // Logs section
+    // Live logs section
+    containerEl.createEl('h3', { text: 'Live Logs' });
+    const logPanelContainer = containerEl.createDiv('cron-live-logs');
+    logPanelContainer.style.marginBottom = '20px';
+    const logPanel = new CronLogPanel(
+      logPanelContainer,
+      (listener) => this.plugin.cronManager?.onLog(listener) ?? (() => {})
+    );
+    logPanel.load();
+
+    // Historical logs section
     containerEl.createEl('h3', { text: 'Recent Activity' });
     this.renderLogs(containerEl);
   }

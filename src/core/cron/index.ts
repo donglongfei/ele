@@ -5,3 +5,4 @@
 export * from './types';
 export * from './CronExpression';
 export * from './CronManager';
+export * from './CronBackgroundService';

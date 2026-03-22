@@ -9,12 +9,15 @@ import type ElePlugin from '../../main';
 import type { CronStorage } from '../storage/CronStorage';
 import { getVaultPath } from '../../utils/path';
 import { CronExpression, generateCronExpression } from './CronExpression';
+import { CronBackgroundService } from './CronBackgroundService';
 import type {
   CronFrequency,
   CronJob,
   CronJobConfig,
   CronJobLog,
+  CronJobRealtimeLog,
   CronJobType,
+  CronLogListener,
   FileOperationConfig,
   NotificationConfig,
   OpenClawQueryConfig,
@@ -33,16 +36,40 @@ export class CronManager {
   private scheduledJobs: Map<string, ScheduledJob> = new Map();
   private initialized = false;
   private checkIntervalId: number | null = null;
+  private backgroundService: CronBackgroundService | null = null;
+  private logListeners: Set<CronLogListener> = new Set();
 
   constructor(plugin: ElePlugin, storage: CronStorage) {
     this.plugin = plugin;
     this.storage = storage;
   }
 
+  // Real-time log streaming
+  onLog(listener: CronLogListener): () => void {
+    this.logListeners.add(listener);
+    return () => this.logListeners.delete(listener);
+  }
+
+  private emitLog(log: CronJobRealtimeLog): void {
+    for (const listener of this.logListeners) {
+      try {
+        listener(log);
+      } catch (e) {
+        console.error('[CronManager] Log listener error:', e);
+      }
+    }
+  }
+
   async initialize(): Promise<void> {
     if (this.initialized) return;
 
     await this.storage.initialize();
+
+    // Initialize background service for OpenClaw queries
+    this.backgroundService = new CronBackgroundService(this.plugin, this.plugin.mcpManager);
+    await this.backgroundService.initialize().catch(err => {
+      console.warn('[CronManager] Background service failed to initialize:', err);
+    });
 
     // Schedule all enabled jobs
     const jobs = this.storage.getJobs();
@@ -74,6 +101,10 @@ export class CronManager {
       window.clearInterval(this.checkIntervalId);
       this.checkIntervalId = null;
     }
+
+    // Cleanup background service
+    this.backgroundService?.cleanup();
+    this.backgroundService = null;
 
     this.initialized = false;
   }
@@ -347,10 +378,20 @@ export class CronManager {
 
     console.log(`[CronManager] Executing job "${job.name}"`);
 
+    // Emit started log
+    this.emitLog({
+      id: logId,
+      jobId: job.id,
+      jobName: job.name,
+      timestamp: startedAt,
+      level: 'info',
+      message: `Job "${job.name}" started`,
+    });
+
     try {
       switch (job.type) {
         case 'openclaw-query':
-          await this.executeOpenClawQuery(job.config as OpenClawQueryConfig);
+          await this.executeOpenClawQuery(job.config as OpenClawQueryConfig, job.id, job.name);
           break;
         case 'file-operation':
           await this.executeFileOperation(job.config as FileOperationConfig);
@@ -382,6 +423,16 @@ export class CronManager {
         lastRunError: undefined,
       });
 
+      this.emitLog({
+        id: `${logId}-success`,
+        jobId: job.id,
+        jobName: job.name,
+        timestamp: endedAt,
+        level: 'success',
+        message: `Job "${job.name}" completed successfully`,
+        details: `Duration: ${endedAt - startedAt}ms`,
+      });
+
       console.log(`[CronManager] Job "${job.name}" completed successfully`);
     } catch (error) {
       // Error
@@ -402,6 +453,16 @@ export class CronManager {
         lastRunAt: startedAt,
         lastRunStatus: 'error',
         lastRunError: errorMessage,
+      });
+
+      this.emitLog({
+        id: `${logId}-error`,
+        jobId: job.id,
+        jobName: job.name,
+        timestamp: endedAt,
+        level: 'error',
+        message: `Job "${job.name}" failed`,
+        details: errorMessage,
       });
 
       console.error(`[CronManager] Job "${job.name}" failed:`, error);
@@ -425,16 +486,53 @@ export class CronManager {
 
   // Job type executors
 
-  private async executeOpenClawQuery(config: OpenClawQueryConfig): Promise<void> {
-    // Get active tab service
+  private async executeOpenClawQuery(
+    config: OpenClawQueryConfig,
+    jobId: string,
+    jobName: string
+  ): Promise<void> {
+    // Use background service if available
+    if (this.backgroundService) {
+      const result = await this.backgroundService.query({
+        prompt: config.prompt,
+        model: config.model,
+        jobId,
+        jobName,
+        onLog: (log) => this.emitLog(log),
+      });
+
+      if (config.targetFile) {
+        this.emitLog({
+          id: `${jobId}-${Date.now()}`,
+          jobId,
+          jobName,
+          timestamp: Date.now(),
+          level: 'info',
+          message: 'Saving to file...',
+          details: config.targetFile,
+        });
+        await this.saveToFile(config.targetFile, result, config.appendMode);
+        this.emitLog({
+          id: `${jobId}-${Date.now()}`,
+          jobId,
+          jobName,
+          timestamp: Date.now(),
+          level: 'success',
+          message: 'File saved successfully',
+        });
+      }
+      return;
+    }
+
+    // Fallback: Try to use active tab service if background service not available
     const view = this.plugin.getView?.();
     if (!view) {
-      throw new Error('No active Ele view');
+      throw new Error('No active Ele view and background service not available. Please open Ele view or reload plugin.');
     }
 
     const tab = view.getActiveTab?.();
     if (!tab?.service) {
-      throw new Error('No active service available');
+      throw new Error('No active service available. Please create a conversation tab.');
     }
 
     const chunks: string[] = [];
