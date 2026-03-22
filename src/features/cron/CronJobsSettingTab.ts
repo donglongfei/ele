@@ -7,7 +7,7 @@ import { Notice, Setting } from 'obsidian';
 import type ElePlugin from '../../main';
 import type { CronJob } from '../../core/cron/types';
 import { CronJobModal } from './CronJobModal';
-import { CronLogPanel } from './CronLogPanel';
+import { CronLogModal } from './CronLogModal';
 
 export class CronJobsSettingTab {
   constructor(
@@ -67,19 +67,30 @@ export class CronJobsSettingTab {
       }
     }
 
-    // Live logs section
-    containerEl.createEl('h3', { text: 'Live Logs' });
-    const logPanelContainer = containerEl.createDiv('cron-live-logs');
-    logPanelContainer.style.marginBottom = '20px';
-    const logPanel = new CronLogPanel(
-      logPanelContainer,
-      (listener) => this.plugin.cronManager?.onLog(listener) ?? (() => {})
-    );
-    logPanel.load();
+    // Live logs button
+    new Setting(containerEl)
+      .setName('Live Logs')
+      .setDesc('Open real-time log viewer in popup window')
+      .addButton((btn) =>
+        btn
+          .setButtonText('🔴 Open Live Logs')
+          .setCta()
+          .onClick(() => {
+            this.openLogModal();
+          })
+      );
 
     // Historical logs section
     containerEl.createEl('h3', { text: 'Recent Activity' });
     this.renderLogs(containerEl);
+  }
+
+  private openLogModal(): void {
+    const modal = new CronLogModal(
+      this.app,
+      (listener) => this.plugin.cronManager?.onLog(listener) ?? (() => {})
+    );
+    modal.open();
   }
 
   private renderJobItem(container: HTMLElement, job: CronJob, parentContainer: HTMLElement): void {
@@ -156,6 +167,11 @@ export class CronJobsSettingTab {
     runBtn.addEventListener('click', async () => {
       await this.plugin.cronManager?.runJobNow(job.id);
       new Notice(`Job "${job.name}" started`);
+    });
+
+    const logsBtn = actionsEl.createEl('button', { text: '🔴 Logs' });
+    logsBtn.addEventListener('click', () => {
+      this.openLogModal();
     });
 
     const deleteBtn = actionsEl.createEl('button', { text: 'Delete' });
