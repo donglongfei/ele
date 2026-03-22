@@ -1,9 +1,3 @@
-<!-- Eleven Logo - Cartoon/Anime Style -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 40" width="100" height="40">
-  <!-- Eleven in cute cartoon style -->
-  <text x="5" y="30" 
-        font-family="'Mochiy Pop One', 'Kosugi Maru', 'Hiragino Maru Gothic Pro', 'Comic Sans MS', cursive"
-        font-size="28"
-        font-weight="700"
-        fill="#FF8C69">Eleven</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 70" width="100" height="70">
+  <path d="M5 25h26v9H14v7h17v9H14v7h17v9H5zm32 0h9v32h12v9H37zm59 0v9H79v7h17v9H79v7h17v9H68V25z" fill="#D97757"/>
 </svg>
