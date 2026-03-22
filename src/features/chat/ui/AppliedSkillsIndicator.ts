@@ -1,5 +1,3 @@
-import { setIcon } from 'obsidian';
-
 import type { AppliedInstructionSkill } from '../state/types';
 
 export interface AppliedSkillsIndicatorCallbacks {
@@ -43,26 +41,17 @@ export class AppliedSkillsIndicator {
     // Header
     const headerEl = this.skillsContainerEl.createDiv({ cls: 'ele-applied-skills-header' });
     const iconEl = headerEl.createSpan({ cls: 'ele-applied-skills-icon' });
-    setIcon(iconEl, 'sparkles');
+    iconEl.textContent = '✨';
     const textEl = headerEl.createSpan({ cls: 'ele-applied-skills-text' });
     textEl.setText(`${this.skills.length} instruction skill${this.skills.length > 1 ? 's' : ''} applied`);
 
-    // Toggle all button
+    // Toggle all button - use text instead of icon
     const toggleAllBtn = headerEl.createEl('button', { 
       cls: 'ele-applied-skills-toggle-all',
       attr: { 'aria-label': 'Toggle all' }
     });
-    toggleAllBtn.style.display = 'flex';
-    toggleAllBtn.style.alignItems = 'center';
-    toggleAllBtn.style.justifyContent = 'center';
-    toggleAllBtn.style.width = '28px';
-    toggleAllBtn.style.height = '28px';
-    toggleAllBtn.style.minWidth = '28px';
-    toggleAllBtn.style.flexShrink = '0';
-    
     const allExpanded = this.skills.every(s => this.expandedSkills.has(s.name));
-    // Use valid Lucide icon names
-    setIcon(toggleAllBtn, allExpanded ? 'chevron-up' : 'chevron-down');
+    toggleAllBtn.textContent = allExpanded ? '▼' : '▶';
     toggleAllBtn.addEventListener('click', () => {
       if (allExpanded) {
         this.expandedSkills.clear();
@@ -73,7 +62,7 @@ export class AppliedSkillsIndicator {
     });
 
     // Skills list
-    const listEl = this.skillsContainerEl.createDiv({ cls: 'ele-applied-skills-list' });
+    const listEl = this.containerEl.createDiv({ cls: 'ele-applied-skills-list' });
 
     for (const skill of this.skills) {
       const isExpanded = this.expandedSkills.has(skill.name);
@@ -86,15 +75,7 @@ export class AppliedSkillsIndicator {
       const skillHeaderEl = skillEl.createDiv({ cls: 'ele-applied-skill-header' });
       
       const toggleEl = skillHeaderEl.createSpan({ cls: 'ele-applied-skill-toggle' });
-      // Use valid Lucide icons
-      setIcon(toggleEl, isExpanded ? 'chevron-down' : 'chevron-right');
-      
-      // Ensure toggle icon is visible
-      toggleEl.style.display = 'flex';
-      toggleEl.style.alignItems = 'center';
-      toggleEl.style.justifyContent = 'center';
-      toggleEl.style.width = '20px';
-      toggleEl.style.height = '20px';
+      toggleEl.textContent = isExpanded ? '▼' : '▶';
       
       const nameEl = skillHeaderEl.createSpan({ cls: 'ele-applied-skill-name' });
       nameEl.setText(skill.name);
@@ -104,18 +85,12 @@ export class AppliedSkillsIndicator {
         descEl.setText(skill.description);
       }
 
+      // Remove button - use text instead of icon
       const removeBtn = skillHeaderEl.createEl('button', {
         cls: 'ele-applied-skill-remove',
         attr: { 'aria-label': 'Remove skill' }
       });
-      removeBtn.style.display = 'flex';
-      removeBtn.style.alignItems = 'center';
-      removeBtn.style.justifyContent = 'center';
-      removeBtn.style.width = '24px';
-      removeBtn.style.height = '24px';
-      removeBtn.style.minWidth = '24px';
-      removeBtn.style.flexShrink = '0';
-      setIcon(removeBtn, 'x');
+      removeBtn.textContent = '×';
       removeBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         this.callbacks.onRemoveSkill(skill.name);
