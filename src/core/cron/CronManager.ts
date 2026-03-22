@@ -566,10 +566,26 @@ export class CronManager {
       message: 'Sending query to OpenClaw...',
       details: `Prompt: ${config.prompt.substring(0, 50)}...`,
     });
+    
+    // Get conversation ID from active tab
+    const conversationId = tab.state?.currentConversationId;
+    if (!conversationId) {
+      throw new Error('No conversation ID found in active tab');
+    }
+    
+    this.emitLog({
+      id: `${jobId}-conversation`,
+      jobId,
+      jobName,
+      timestamp: Date.now(),
+      level: 'info',
+      message: 'Using conversation',
+      details: conversationId,
+    });
 
     const chunks: string[] = [];
     try {
-      for await (const chunk of tab.service.query(config.prompt)) {
+      for await (const chunk of tab.service.query(config.prompt, undefined, undefined, { conversationId })) {
         this.emitLog({
           id: `${jobId}-chunk-${Date.now()}`,
           jobId,
