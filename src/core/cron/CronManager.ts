@@ -643,11 +643,23 @@ export class CronManager {
   }
 
   private async saveToFile(filePath: string, content: string, mode?: 'append' | 'overwrite' | 'prepend'): Promise<void> {
-    const vaultPath = (this.plugin.app.vault.adapter as any).basePath;
-    const normalizedPath = filePath.replace(/^\$\{vault\}/, vaultPath).replace(/^~/, process.env.HOME || '');
-
     const fs = require('fs');
     const path = require('path');
+    
+    const vaultPath = (this.plugin.app.vault.adapter as any).basePath;
+    
+    // Normalize path: handle ${vault} prefix, ~ home, or relative paths
+    let normalizedPath: string;
+    if (filePath.startsWith('${vault}')) {
+      normalizedPath = filePath.replace(/^\$\{vault\}/, vaultPath);
+    } else if (filePath.startsWith('~')) {
+      normalizedPath = filePath.replace(/^~/, process.env.HOME || '');
+    } else if (!path.isAbsolute(filePath)) {
+      // Relative path - resolve against vault
+      normalizedPath = path.join(vaultPath, filePath);
+    } else {
+      normalizedPath = filePath;
+    }
 
     // Ensure directory exists
     const dir = path.dirname(normalizedPath);
