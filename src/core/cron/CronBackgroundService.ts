@@ -8,6 +8,7 @@
 import { Notice } from 'obsidian';
 import type ElePlugin from '../../main';
 import { EleService } from '../agent/EleService';
+import type { QueryOptions } from '../agent/EleService';
 import type { McpServerManager } from '../mcp';
 import type { StreamChunk } from '../types';
 import type { CronJobRealtimeLog } from './types';
@@ -35,29 +36,34 @@ export class CronBackgroundService {
     if (this.isReady) return;
 
     try {
+      // Delay initialization to ensure plugin is fully loaded
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       // Create a background EleService instance
       this.eleService = new EleService(this.plugin, this.mcpManager);
       
       // Set up minimal callbacks (no UI)
-      this.eleService.setApprovalCallback(async (toolName, input, description) => {
+      this.eleService.setApprovalCallback(async (toolName) => {
         // Auto-approve safe tools in background mode
         if (this.isSafeTool(toolName)) {
-          return { decision: 'approve' };
+          return 'allow';
         }
         // Block potentially dangerous tools
         console.warn(`[CronBackgroundService] Blocking tool in background mode: ${toolName}`);
-        return { 
-          decision: 'reject', 
-          reason: 'Tool not allowed in background cron job' 
-        };
+        return 'deny';
       });
 
       this.isReady = true;
       console.log('[CronBackgroundService] Initialized successfully');
     } catch (error) {
       console.error('[CronBackgroundService] Failed to initialize:', error);
-      throw error;
+      // Don't throw - allow plugin to work without background service
+      this.isReady = false;
     }
+  }
+
+  isServiceReady(): boolean {
+    return this.isReady;
   }
 
   async query(options: BackgroundQueryOptions): Promise<string> {
@@ -79,13 +85,12 @@ export class CronBackgroundService {
     });
 
     try {
-      const queryOptions: { model?: string; forceColdStart?: boolean } = {};
-      if (model) {
-        queryOptions.model = model;
-      }
-      queryOptions.forceColdStart = true; // Always use cold start for background
+      const queryOptions: QueryOptions = {
+        model,
+        forceColdStart: true, // Always use cold start for background
+      };
 
-      for await (const chunk of this.eleService.query(prompt, queryOptions)) {
+      for await (const chunk of this.eleService.query(prompt, undefined, undefined, queryOptions)) {
         if (chunk.type === 'text') {
           chunks.push(chunk.content);
           

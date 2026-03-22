@@ -65,11 +65,14 @@ export class CronManager {
 
     await this.storage.initialize();
 
-    // Initialize background service for OpenClaw queries
-    this.backgroundService = new CronBackgroundService(this.plugin, this.plugin.mcpManager);
-    await this.backgroundService.initialize().catch(err => {
-      console.warn('[CronManager] Background service failed to initialize:', err);
-    });
+    // Initialize background service for OpenClaw queries (optional)
+    try {
+      this.backgroundService = new CronBackgroundService(this.plugin, this.plugin.mcpManager);
+      await this.backgroundService.initialize();
+    } catch (err) {
+      console.warn('[CronManager] Background service not available:', err);
+      this.backgroundService = null;
+    }
 
     // Schedule all enabled jobs
     const jobs = this.storage.getJobs();
@@ -491,8 +494,8 @@ export class CronManager {
     jobId: string,
     jobName: string
   ): Promise<void> {
-    // Use background service if available
-    if (this.backgroundService) {
+    // Use background service if available and ready
+    if (this.backgroundService?.isServiceReady()) {
       const result = await this.backgroundService.query({
         prompt: config.prompt,
         model: config.model,
