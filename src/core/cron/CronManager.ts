@@ -528,26 +528,86 @@ export class CronManager {
     }
 
     // Fallback: Try to use active tab service if background service not available
+    this.emitLog({
+      id: `${jobId}-fallback`,
+      jobId,
+      jobName,
+      timestamp: Date.now(),
+      level: 'info',
+      message: 'Using active tab (background service not available)',
+    });
+    
     const view = this.plugin.getView?.();
     if (!view) {
-      throw new Error('No active Ele view and background service not available. Please open Ele view or reload plugin.');
+      throw new Error('No active Ele view. Please open Ele view.');
     }
 
     const tab = view.getActiveTab?.();
     if (!tab?.service) {
-      throw new Error('No active service available. Please create a conversation tab.');
+      throw new Error('No active service. Please create a conversation tab.');
     }
+    
+    this.emitLog({
+      id: `${jobId}-query-start`,
+      jobId,
+      jobName,
+      timestamp: Date.now(),
+      level: 'info',
+      message: 'Sending query to OpenClaw...',
+      details: `Prompt: ${config.prompt.substring(0, 50)}...`,
+    });
 
     const chunks: string[] = [];
-    for await (const chunk of tab.service.query(config.prompt)) {
-      if (chunk.type === 'text') {
-        chunks.push(chunk.content);
+    try {
+      for await (const chunk of tab.service.query(config.prompt)) {
+        if (chunk.type === 'text') {
+          chunks.push(chunk.content);
+          this.emitLog({
+            id: `${jobId}-chunk-${Date.now()}`,
+            jobId,
+            jobName,
+            timestamp: Date.now(),
+            level: 'info',
+            message: 'Received chunk',
+            details: `${chunk.content.length} chars`,
+          });
+        }
       }
+    } catch (err) {
+      this.emitLog({
+        id: `${jobId}-query-error`,
+        jobId,
+        jobName,
+        timestamp: Date.now(),
+        level: 'error',
+        message: 'Query failed',
+        details: err instanceof Error ? err.message : String(err),
+      });
+      throw err;
     }
 
     const result = chunks.join('');
+    
+    this.emitLog({
+      id: `${jobId}-result`,
+      jobId,
+      jobName,
+      timestamp: Date.now(),
+      level: 'success',
+      message: 'Query completed',
+      details: `${result.length} chars received`,
+    });
 
     if (config.targetFile) {
+      this.emitLog({
+        id: `${jobId}-saving`,
+        jobId,
+        jobName,
+        timestamp: Date.now(),
+        level: 'info',
+        message: 'Saving to file...',
+        details: config.targetFile,
+      });
       await this.saveToFile(config.targetFile, result, config.appendMode);
     }
   }
