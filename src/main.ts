@@ -72,8 +72,28 @@ export default class ElePlugin extends Plugin {
     await this.agentManager.loadAgents();
 
     // Initialize cron manager
-    this.cronManager = new CronManager(this, this.storage.cron);
-    await this.cronManager.initialize();
+    try {
+      this.cronManager = new CronManager(this, this.storage.cron);
+      await this.cronManager.initialize();
+    } catch (err) {
+      console.error('[ElePlugin] Failed to initialize cron manager:', err);
+      // Create a dummy cron manager to prevent crashes
+      this.cronManager = {
+        getJobs: () => [],
+        getJob: () => null,
+        getLogs: () => [],
+        onLog: () => () => {},
+        addJob: async () => ({} as any),
+        updateJob: async () => {},
+        deleteJob: async () => {},
+        toggleJob: async () => {},
+        runJobNow: async () => {},
+        loadFileBasedJobs: async () => 0,
+        checkMissedJobs: () => {},
+        clearLogs: async () => {},
+        cleanup: () => {},
+      } as any;
+    }
 
     // Register view (both constants point to same string for compatibility)
     this.registerView(
