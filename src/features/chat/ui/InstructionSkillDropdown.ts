@@ -174,7 +174,7 @@ export class InstructionSkillDropdown {
 
     if (this.filteredSkills.length === 0) {
       const emptyEl = listEl.createDiv({ cls: 'ele-instruction-dropdown-empty' });
-      emptyEl.setText('No skills found. Create skills in .opencode/skills/');
+      emptyEl.setText('No skills found. Create skills in .ele/skills/');
       this.dropdownEl.addClass('visible');
       return;
     }

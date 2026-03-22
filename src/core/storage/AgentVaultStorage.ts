@@ -3,7 +3,7 @@ import { buildAgentFromFrontmatter, parseAgentFile } from '../agents/AgentStorag
 import type { AgentDefinition } from '../types';
 import type { VaultFileAdapter } from './VaultFileAdapter';
 
-export const AGENTS_PATH = '.opencode/agents';
+export const AGENTS_PATH = '.ele/agents';
 export const LEGACY_AGENTS_PATH = '.claude/agents';
 
 export class AgentVaultStorage {

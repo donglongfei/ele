@@ -2,7 +2,7 @@ import { isSkill, parsedToSlashCommand, parseSlashCommandContent, serializeComma
 import type { SlashCommand } from '../types';
 import type { VaultFileAdapter } from './VaultFileAdapter';
 
-export const SKILLS_PATH = '.opencode/skills';
+export const SKILLS_PATH = '.ele/skills';
 export const LEGACY_SKILLS_PATH = '.claude/skills';
 
 export class SkillStorage {

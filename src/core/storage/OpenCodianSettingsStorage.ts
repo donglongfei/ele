@@ -1,7 +1,7 @@
 /**
  * OpenCodianSettingsStorage - Handles opencodian-settings.json read/write.
  *
- * Manages the .opencode/opencodian-settings.json file for OpenCodian-specific settings.
+ * Manages the .ele/opencodian-settings.json file for OpenCodian-specific settings.
  * These settings are NOT shared with OpenClaw Gateway.
  *
  * Includes:
@@ -21,15 +21,15 @@ import { DEFAULT_SETTINGS, getDefaultBlockedCommands } from '../types';
 import type { VaultFileAdapter } from './VaultFileAdapter';
 
 /** Path to OpenCodian settings file relative to vault root. */
-export const OPENCODIAN_SETTINGS_PATH = '.opencode/opencodian-settings.json';
+export const OPENCODIAN_SETTINGS_PATH = '.ele/opencodian-settings.json';
 
 /** Legacy path for migration support. */
 export const LEGACY_CLAUDIAN_SETTINGS_PATH = '.claude/claudian-settings.json';
 
-/** Fields that are loaded separately (slash commands from .opencode/commands/). */
+/** Fields that are loaded separately (slash commands from .ele/commands/). */
 type SeparatelyLoadedFields = 'slashCommands';
 
-/** Settings stored in .opencode/opencodian-settings.json. */
+/** Settings stored in .ele/opencodian-settings.json. */
 export type StoredOpenCodianSettings = Omit<EleSettings, SeparatelyLoadedFields>;
 
 function normalizeCommandList(value: unknown, fallback: string[]): string[] {
@@ -71,7 +71,7 @@ export class OpenCodianSettingsStorage {
   constructor(private adapter: VaultFileAdapter) { }
 
   /**
-  * Load OpenCodian settings from .opencode/opencodian-settings.json.
+  * Load OpenCodian settings from .ele/opencodian-settings.json.
   * Returns default settings if file doesn't exist.
   * Throws if file exists but cannot be read or parsed.
   */

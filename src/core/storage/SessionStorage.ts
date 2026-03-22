@@ -1,5 +1,5 @@
 /**
- * SessionStorage - Handles chat session files in vault/.opencode/sessions/
+ * SessionStorage - Handles chat session files in vault/.ele/sessions/
  *
  * Each conversation is stored as a JSONL (JSON Lines) file.
  * First line contains metadata, subsequent lines contain messages.
@@ -24,7 +24,7 @@ import type {
 import type { VaultFileAdapter } from './VaultFileAdapter';
 
 /** Path to sessions folder relative to vault root. */
-export const SESSIONS_PATH = '.opencode/sessions';
+export const SESSIONS_PATH = '.ele/sessions';
 
 /** Legacy path for migration. */
 export const LEGACY_SESSIONS_PATH = '.claude/sessions';

@@ -94,3 +94,4 @@ test-*.js
 .claude/
 .codex/00-Eleven
 vault/
+00-Eleven

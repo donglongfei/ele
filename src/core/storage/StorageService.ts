@@ -2,14 +2,14 @@
  * StorageService - Main coordinator for distributed storage system.
  *
  * Manages:
- * - OpenClaw settings in .opencode/settings.json (OpenClaw-compatible, shareable)
- * - OpenCodian settings in .opencode/opencodian-settings.json (OpenCodian-specific)
- * - Slash commands in .opencode/commands/*.md
- * - Chat sessions in .opencode/sessions/*.jsonl
- * - MCP configs in .opencode/mcp.json
+ * - OpenClaw settings in .ele/settings.json (OpenClaw-compatible, shareable)
+ * - OpenCodian settings in .ele/opencodian-settings.json (OpenCodian-specific)
+ * - Slash commands in .ele/commands/*.md
+ * - Chat sessions in .ele/sessions/*.jsonl
+ * - MCP configs in .ele/mcp.json
  *
  * Handles migration from legacy formats:
- * - Old .claude/ → .opencode/
+ * - Old .claude/ → .ele/
  * - Old settings.json with Claudian fields → split into OpenClaw + OpenCodian files
  * - Old permissions array → OpenClaw permissions object
  * - data.json state → opencodian-settings.json
@@ -52,7 +52,7 @@ import { COMMANDS_PATH, SlashCommandStorage } from './SlashCommandStorage';
 import { VaultFileAdapter } from './VaultFileAdapter';
 
 /** Base path for all OpenCodian storage. */
-export const OPENCODE_PATH = '.opencode';
+export const OPENCODE_PATH = '.ele';
 
 /** Legacy base path for migration. */
 export const CLAUDE_PATH = '.claude';
@@ -379,7 +379,7 @@ export class StorageService {
   }
 
   async ensureDirectories(): Promise<void> {
-    // Create new .opencode directory
+    // Create new .ele directory
     await this.adapter.ensureFolder(OPENCODE_PATH);
     await this.adapter.ensureFolder(COMMANDS_PATH);
     await this.adapter.ensureFolder(SKILLS_PATH);

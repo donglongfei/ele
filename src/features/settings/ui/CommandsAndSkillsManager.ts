@@ -349,7 +349,7 @@ export class CommandsAndSkillsManager {
 
     // Section 1: Commands
     if (commands.length > 0) {
-      this.renderSectionHeader('Commands', `.opencode/commands/`);
+      this.renderSectionHeader('Commands', `.ele/commands/`);
       const listEl = this.containerEl.createDiv({ cls: 'ele-cas-list' });
       for (const cmd of commands) {
         this.renderCommandItem(listEl, cmd);
@@ -358,7 +358,7 @@ export class CommandsAndSkillsManager {
 
     // Section 2: Obsidian Skills
     if (obsidianSkills.length > 0) {
-      this.renderSectionHeader('Obsidian Skills', `.opencode/skills/`);
+      this.renderSectionHeader('Obsidian Skills', `.ele/skills/`);
       const listEl = this.containerEl.createDiv({ cls: 'ele-cas-list' });
       for (const skill of obsidianSkills) {
         this.renderSkillItem(listEl, skill, 'obsidian');
@@ -414,7 +414,7 @@ export class CommandsAndSkillsManager {
           source: 'obsidian',
           path: '',
           userInvocable: cmd.userInvocable,
-          location: '.opencode/skills/',
+          location: '.ele/skills/',
         });
       }
     } catch (err) {

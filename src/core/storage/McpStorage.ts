@@ -1,5 +1,5 @@
 /**
- * McpStorage - Handles .opencode/mcp.json read/write
+ * McpStorage - Handles .ele/mcp.json read/write
  *
  * MCP server configurations are stored in OpenClaw-compatible format
  * with optional Ele-specific metadata in _ele field.
@@ -29,7 +29,7 @@ import { DEFAULT_MCP_SERVER, isValidMcpServerConfig } from '../types';
 import type { VaultFileAdapter } from './VaultFileAdapter';
 
 /** Path to MCP config file relative to vault root. */
-export const MCP_CONFIG_PATH = '.opencode/mcp.json';
+export const MCP_CONFIG_PATH = '.ele/mcp.json';
 
 /** Legacy path for migration. */
 export const LEGACY_MCP_CONFIG_PATH = '.claude/mcp.json';

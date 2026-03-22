@@ -2,7 +2,7 @@ import { parsedToSlashCommand, parseSlashCommandContent, serializeCommand } from
 import type { SlashCommand } from '../types';
 import type { VaultFileAdapter } from './VaultFileAdapter';
 
-export const COMMANDS_PATH = '.opencode/commands';
+export const COMMANDS_PATH = '.ele/commands';
 export const LEGACY_COMMANDS_PATH = '.claude/commands';
 
 export class SlashCommandStorage {

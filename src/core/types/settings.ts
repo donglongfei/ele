@@ -193,7 +193,7 @@ export interface KeyboardNavigationSettings {
 export type TabBarPosition = 'input' | 'header';
 
 /**
- * Claudian-specific settings stored in .opencode/opencodian-settings.json.
+ * Claudian-specific settings stored in .ele/opencodian-settings.json.
  * These settings are NOT shared with OpenClaw Gateway.
  */
 export interface EleSettings {

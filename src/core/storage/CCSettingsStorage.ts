@@ -1,7 +1,7 @@
 /**
  * CCSettingsStorage - Handles OpenClaw-compatible settings.json read/write.
  *
- * Manages the .opencode/settings.json file in OpenClaw compatible format.
+ * Manages the .ele/settings.json file in OpenClaw compatible format.
  * This file is compatible with OpenClaw Gateway configuration.
  *
  * Only OpenClaw-compatible fields are stored here:
@@ -27,7 +27,7 @@ import { CLAUDIAN_ONLY_FIELDS } from './migrationConstants';
 import type { VaultFileAdapter } from './VaultFileAdapter';
 
 /** Path to OpenClaw settings file relative to vault root. */
-export const CC_SETTINGS_PATH = '.opencode/settings.json';
+export const CC_SETTINGS_PATH = '.ele/settings.json';
 
 /** Legacy path for migration support. */
 export const LEGACY_CC_SETTINGS_PATH = '.claude/settings.json';
@@ -150,7 +150,7 @@ export class CCSettingsStorage {
   }
 
   /**
-   * Save OpenClaw settings to .opencode/settings.json.
+   * Save OpenClaw settings to .ele/settings.json.
    * Preserves unknown fields for compatibility.
    *
    * @param stripClaudianFields - If true, remove Claudian-only fields (only during migration)
