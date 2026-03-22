@@ -579,7 +579,7 @@ export class CronManager {
     });
     
     // Post to chat: job started
-    this.postToChat(`🤖 **Cron Job: ${jobName}**\n\n⏳ Executing...\n\n**Prompt:**\n${config.prompt.substring(0, 200)}${config.prompt.length > 200 ? '...' : ''}`);
+    this.postToChat(`🤖 **Cron Job: ${jobName}**\n\n⏳ Executing...\n\n**Prompt:**\n${config.prompt.substring(0, 200)}${config.prompt.length > 200 ? '...' : ''}`, 'assistant', tab);
     
     // Get conversation ID from active tab
     const conversationId = tab.state?.currentConversationId;
@@ -627,7 +627,7 @@ export class CronManager {
         message: 'Query failed',
         details: err instanceof Error ? err.message : String(err),
       });
-      this.postToChat(`❌ **Cron Job Failed: ${jobName}**\n\nError: ${err instanceof Error ? err.message : String(err)}`);
+      this.postToChat(`❌ **Cron Job Failed: ${jobName}**\n\nError: ${err instanceof Error ? err.message : String(err)}`, 'assistant', tab);
       throw err;
     }
 
@@ -647,7 +647,7 @@ export class CronManager {
     const outputPreview = result.substring(0, 500);
     const outputTruncated = result.length > 500 ? `${outputPreview}...\n\n*(truncated - full output: ${result.length} chars)*` : outputPreview;
     
-    this.postToChat(`✅ **Cron Job Completed: ${jobName}**\n\n**Response:**\n${outputTruncated}`);
+    this.postToChat(`✅ **Cron Job Completed: ${jobName}**\n\n**Response:**\n${outputTruncated}`, 'assistant', tab);
 
     if (config.targetFile) {
       this.emitLog({
@@ -660,7 +660,7 @@ export class CronManager {
         details: config.targetFile,
       });
       await this.saveToFile(config.targetFile, result, config.appendMode);
-      this.postToChat(`💾 Output saved to: ${config.targetFile}`);
+      this.postToChat(`💾 Output saved to: ${config.targetFile}`, 'assistant', tab);
     }
   }
 
@@ -848,13 +848,17 @@ export class CronManager {
   }
 
   /**
-   * Post a message to the active Ele chat tab
+   * Post a message to a specific tab or the active Ele chat tab
    */
-  private postToChat(content: string, role: 'user' | 'assistant' = 'assistant'): void {
-    const view = this.plugin.getView?.();
-    if (!view) return;
+  private postToChat(content: string, role: 'user' | 'assistant' = 'assistant', targetTab?: any): void {
+    let tab = targetTab;
     
-    const tab = view.getActiveTab?.();
+    if (!tab) {
+      const view = this.plugin.getView?.();
+      if (!view) return;
+      tab = view.getActiveTab?.();
+    }
+    
     if (!tab?.state) return;
     
     const message: ChatMessage = {
