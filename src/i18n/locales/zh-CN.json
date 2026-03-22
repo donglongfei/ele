@@ -141,6 +141,10 @@
       "name": "命令与技能",
       "desc": "定义由 /名称 触发的自定义命令与技能。"
     },
+    "commandsAndSkills": {
+      "name": "命令与技能",
+      "desc": "统一管理命令、Obsidian 技能和 OpenClaw 技能。命令 (.opencode/commands/)、Obsidian 技能 (.opencode/skills/)、OpenClaw 技能 (~/.openclaw/skills/)。"
+    },
     "hiddenSlashCommands": {
       "name": "隐藏命令",
       "desc": "从下拉菜单中隐藏特定的斜杠命令。适用于隐藏与 OpenCodian 无关的 OpenClaw 命令。每行输入一个命令名称，无需前导斜杠。",

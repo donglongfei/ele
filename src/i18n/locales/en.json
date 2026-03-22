@@ -141,6 +141,10 @@
       "name": "Commands and Skills",
       "desc": "Define custom commands and skills triggered by /name."
     },
+    "commandsAndSkills": {
+      "name": "Commands and Skills",
+      "desc": "Manage Commands, Obsidian Skills, and OpenClaw Skills in one place. Commands (.opencode/commands/), Obsidian Skills (.opencode/skills/), and OpenClaw Skills (~/.openclaw/skills/)."
+    },
     "hiddenSlashCommands": {
       "name": "Hidden Commands",
       "desc": "Hide specific slash commands from the dropdown. Useful for hiding OpenClaw commands that are not relevant to OpenCodian. Enter command names without the leading slash, one per line.",

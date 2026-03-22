@@ -27,9 +27,11 @@ import { SubagentManager } from '../services/SubagentManager';
 import { TitleGenerationService } from '../services/TitleGenerationService';
 import { ChatState } from '../state';
 import {
+  AppliedSkillsIndicator,
   BangBashModeManager as BangBashModeManagerClass,
   createInputToolbar,
   FileContextManager,
+  HealthCheckIndicator,
   ImageContextManager,
   InstructionModeManager as InstructionModeManagerClass,
   NavigationSidebar,
@@ -127,6 +129,7 @@ export function createTab(options: TabCreateOptions): TabData {
       contextUsageMeter: null,
       statusPanel: null,
       navigationSidebar: null,
+      healthCheckIndicator: null,
     },
     dom,
     renderer: null,
@@ -417,9 +420,28 @@ function initializeInstructionAndTodo(tab: TabData, plugin: ElePlugin): void {
       onSubmit: async (rawInstruction) => {
         await tab.controllers.inputController?.handleInstructionSubmit(rawInstruction);
       },
+      onSelectSkill: async (skill) => {
+        await tab.controllers.inputController?.handleInstructionSkillSelect(skill);
+      },
       getInputWrapper: () => dom.inputWrapper,
+      getInstructionSkills: async () => {
+        // Dynamically load skills from storage (real-time, not cached)
+        try {
+          const skills = await plugin.storage.skills.loadInstructionSkills();
+          return skills.map(cmd => ({
+            name: cmd.name,
+            description: cmd.description,
+            content: cmd.content,
+          }));
+        } catch {
+          return [];
+        }
+      },
     }
   );
+  
+  // Initialize skill dropdown with the input wrapper as container
+  tab.ui.instructionModeManager.initializeSkillDropdown(dom.inputWrapper);
 
   // Bang bash mode (! command execution)
   if (plugin.settings.enableBangBash) {
@@ -451,6 +473,23 @@ function initializeInstructionAndTodo(tab: TabData, plugin: ElePlugin): void {
 
   tab.ui.statusPanel = new StatusPanel();
   tab.ui.statusPanel.mount(dom.statusPanelContainerEl);
+
+  // Applied Skills Indicator (shows instruction skills for current message)
+  tab.ui.appliedSkillsIndicator = new AppliedSkillsIndicator(
+    dom.inputContainerEl,
+    {
+      onRemoveSkill: (name) => {
+        tab.state.removeAppliedInstructionSkill(name);
+      },
+    }
+  );
+
+  // Listen for applied skills changes and update UI
+  const originalOnAppliedSkillsChanged = tab.state.callbacks.onAppliedSkillsChanged;
+  tab.state.callbacks.onAppliedSkillsChanged = () => {
+    originalOnAppliedSkillsChanged?.();
+    tab.ui.appliedSkillsIndicator?.setSkills(tab.state.appliedInstructionSkills);
+  };
 }
 
 /**
@@ -595,6 +634,20 @@ function initializeInputToolbar(tab: TabData, plugin: ElePlugin): void {
   tab.ui.externalContextSelector = toolbarComponents.externalContextSelector;
   tab.ui.mcpServerSelector = toolbarComponents.mcpServerSelector;
   tab.ui.permissionToggle = toolbarComponents.permissionToggle;
+
+  // Initialize health check indicator next to folder icon
+  tab.ui.healthCheckIndicator = new HealthCheckIndicator(inputToolbar, {
+    onCheckHealth: async () => {
+      if (!tab.service) {
+        try {
+          await initializeTabService(tab, plugin, plugin.mcpManager);
+        } catch {
+          return false;
+        }
+      }
+      return tab.service?.checkHealth() ?? false;
+    },
+  });
 
   tab.ui.mcpServerSelector.setMcpManager(plugin.mcpManager);
 
@@ -1048,18 +1101,14 @@ export function wireTabInputEvents(tab: TabData, plugin: ElePlugin): void {
       return;
     }
 
-    // Check for # trigger first (empty input + # keystroke)
-    if (ui.instructionModeManager?.handleTriggerKey(e)) {
+    // Check for instruction mode (# skills)
+    if (ui.instructionModeManager?.handleKeydown(e)) {
       return;
     }
 
     // Check for ! trigger (empty input + ! keystroke)
     if (ui.bangBashModeManager?.handleTriggerKey(e)) {
       syncBangBashSuppression();
-      return;
-    }
-
-    if (ui.instructionModeManager?.handleKeydown(e)) {
       return;
     }
 
@@ -1096,7 +1145,7 @@ export function wireTabInputEvents(tab: TabData, plugin: ElePlugin): void {
     if (!ui.bangBashModeManager?.isActive()) {
       ui.fileContextManager?.handleInputChange();
     }
-    ui.instructionModeManager?.handleInputChange();
+    ui.instructionModeManager?.handleInput();
     ui.bangBashModeManager?.handleInputChange();
     syncBangBashSuppression();
     // Auto-resize textarea based on content

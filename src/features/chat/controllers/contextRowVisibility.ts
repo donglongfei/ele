@@ -1,9 +1,9 @@
 export function updateContextRowHasContent(contextRowEl: HTMLElement): void {
-  const editorIndicator = contextRowEl.querySelector('.claudian-selection-indicator') as HTMLElement | null;
-  const browserIndicator = contextRowEl.querySelector('.claudian-browser-selection-indicator') as HTMLElement | null;
-  const canvasIndicator = contextRowEl.querySelector('.claudian-canvas-indicator') as HTMLElement | null;
-  const fileIndicator = contextRowEl.querySelector('.claudian-file-indicator') as HTMLElement | null;
-  const imagePreview = contextRowEl.querySelector('.claudian-image-preview') as HTMLElement | null;
+  const editorIndicator = contextRowEl.querySelector('.ele-selection-indicator') as HTMLElement | null;
+  const browserIndicator = contextRowEl.querySelector('.ele-browser-selection-indicator') as HTMLElement | null;
+  const canvasIndicator = contextRowEl.querySelector('.ele-canvas-indicator') as HTMLElement | null;
+  const fileIndicator = contextRowEl.querySelector('.ele-file-indicator') as HTMLElement | null;
+  const imagePreview = contextRowEl.querySelector('.ele-image-preview') as HTMLElement | null;
 
   const hasEditorSelection = editorIndicator?.style.display === 'block';
   const hasBrowserSelection = browserIndicator !== null && browserIndicator.style.display === 'block';

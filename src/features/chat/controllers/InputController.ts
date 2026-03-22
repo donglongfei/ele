@@ -1,4 +1,4 @@
-import { Notice } from 'obsidian';
+import { Notice, setIcon } from 'obsidian';
 
 import type { ApprovalCallbackOptions, EleService } from '../../../core/agent';
 import { detectBuiltInCommand } from '../../../core/commands';
@@ -6,7 +6,6 @@ import { TOOL_EXIT_PLAN_MODE } from '../../../core/tools/toolNames';
 import type { ApprovalDecision, ChatMessage, ExitPlanModeDecision } from '../../../core/types';
 import type ElePlugin from '../../../main';
 import { ResumeSessionDropdown } from '../../../shared/components/ResumeSessionDropdown';
-import { InstructionModal } from '../../../shared/modals/InstructionConfirmModal';
 import { appendBrowserContext, type BrowserSelectionContext } from '../../../utils/browser';
 import { appendCanvasContext, type CanvasSelectionContext } from '../../../utils/canvas';
 import { appendCurrentNote } from '../../../utils/context';
@@ -262,6 +261,15 @@ export class InputController {
       if (fileContextManager) {
         promptToSend = fileContextManager.transformContextMentions(promptToSend);
       }
+
+      // Append applied instruction skills (temporary, for this message only)
+      const appliedSkills = state.appliedInstructionSkills;
+      if (appliedSkills.length > 0) {
+        const skillsContent = appliedSkills
+          .map(skill => `---\n**${skill.name}**: ${skill.description || ''}\n\n${skill.content}`)
+          .join('\n\n');
+        promptToSend = `${promptToSend}\n\n<instruction-skills>\n${skillsContent}\n</instruction-skills>`;
+      }
     }
 
     fileContextManager?.markCurrentNoteSent();
@@ -290,7 +298,7 @@ export class InputController {
     };
     state.addMessage(assistantMsg);
     const msgEl = renderer.addMessage(assistantMsg);
-    const contentEl = msgEl.querySelector('.claudian-message-content') as HTMLElement;
+    const contentEl = msgEl.querySelector('.ele-message-content') as HTMLElement;
 
     state.toolCallElements.clear();
     state.currentContentEl = contentEl;
@@ -475,6 +483,9 @@ export class InputController {
         // Only clear resumeSessionAt if enqueue succeeded; preserve checkpoint on failure for retry
         const saveExtras = didEnqueueToSdk ? { resumeSessionAt: undefined } : undefined;
         await conversationController.save(true, saveExtras);
+
+        // Clear applied instruction skills after successful send
+        state.clearAppliedInstructionSkills();
 
         const userMsgIndex = state.messages.indexOf(userMsg);
         renderer.refreshActionButtons(userMsg, state.messages, userMsgIndex >= 0 ? userMsgIndex : undefined);
@@ -684,95 +695,45 @@ export class InputController {
 
   async handleInstructionSubmit(rawInstruction: string): Promise<void> {
     const { plugin } = this.deps;
-    const instructionRefineService = this.deps.getInstructionRefineService();
     const instructionModeManager = this.deps.getInstructionModeManager();
 
-    if (!instructionRefineService) return;
+    // Directly append custom instruction to system prompt (no AI refinement)
+    const currentPrompt = plugin.settings.systemPrompt;
+    plugin.settings.systemPrompt = appendMarkdownSnippet(currentPrompt, rawInstruction);
+    await plugin.saveSettings();
 
-    const existingPrompt = plugin.settings.systemPrompt;
-    let modal: InstructionModal | null = null;
-    let wasCancelled = false;
+    // Show success notice
+    const noticeMsg = `✅ Custom instruction applied\n\nYour instruction has been added to the system prompt and will be used for all future messages.`;
+    new Notice(noticeMsg, 5000); // Show for 5 seconds
+    
+    instructionModeManager?.clear();
+  }
 
-    try {
-      modal = new InstructionModal(
-        plugin.app,
-        rawInstruction,
-        {
-          onAccept: async (finalInstruction) => {
-            const currentPrompt = plugin.settings.systemPrompt;
-            plugin.settings.systemPrompt = appendMarkdownSnippet(currentPrompt, finalInstruction);
-            await plugin.saveSettings();
+  async handleInstructionSkillSelect(skill: { name: string; description?: string; content: string }): Promise<void> {
+    const { state } = this.deps;
 
-            new Notice('Instruction added to custom system prompt');
-            instructionModeManager?.clear();
-          },
-          onReject: () => {
-            wasCancelled = true;
-            instructionRefineService.cancel();
-            instructionModeManager?.clear();
-          },
-          onClarificationSubmit: async (response) => {
-            const result = await instructionRefineService.continueConversation(response);
+    // Add skill to current message only (not persisted)
+    state.addAppliedInstructionSkill({
+      name: skill.name,
+      description: skill.description,
+      content: skill.content,
+    });
 
-            if (wasCancelled) {
-              return;
-            }
-
-            if (!result.success) {
-              if (result.error === 'Cancelled') {
-                return;
-              }
-              new Notice(result.error || 'Failed to process response');
-              modal?.showError(result.error || 'Failed to process response');
-              return;
-            }
-
-            if (result.clarification) {
-              modal?.showClarification(result.clarification);
-            } else if (result.refinedInstruction) {
-              modal?.showConfirmation(result.refinedInstruction);
-            }
-          }
-        }
-      );
-      modal.open();
-
-      instructionRefineService.resetConversation();
-      const result = await instructionRefineService.refineInstruction(
-        rawInstruction,
-        existingPrompt
-      );
-
-      if (wasCancelled) {
-        return;
-      }
-
-      if (!result.success) {
-        if (result.error === 'Cancelled') {
-          instructionModeManager?.clear();
-          return;
-        }
-        new Notice(result.error || 'Failed to refine instruction');
-        modal.showError(result.error || 'Failed to refine instruction');
-        instructionModeManager?.clear();
-        return;
-      }
-
-      if (result.clarification) {
-        modal.showClarification(result.clarification);
-      } else if (result.refinedInstruction) {
-        modal.showConfirmation(result.refinedInstruction);
-      } else {
-        new Notice('No instruction received');
-        modal.showError('No instruction received');
-        instructionModeManager?.clear();
-      }
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      new Notice(`Error: ${errorMsg}`);
-      modal?.showError(errorMsg);
-      instructionModeManager?.clear();
+    // Add skill indicator to input box
+    const inputEl = this.deps.getInputEl();
+    const currentValue = inputEl.value;
+    const skillIndicator = `【use skill: ${skill.name}】`;
+    
+    // Check if indicator already exists
+    if (!currentValue.startsWith(skillIndicator)) {
+      inputEl.value = `${skillIndicator}\n${currentValue}`;
+      // Move cursor to end
+      inputEl.selectionStart = inputEl.value.length;
+      inputEl.selectionEnd = inputEl.value.length;
     }
+
+    // Show brief notice
+    new Notice(`✅ Skill "${skill.name}" added to message`, 3000);
   }
 
   // ============================================
@@ -1005,6 +966,7 @@ export class InputController {
         await this.deps.onForkAll();
         break;
       }
+
       default:
         // Unknown command - notify user
         new Notice(`Unknown command: ${action}`);
@@ -1037,6 +999,7 @@ export class InputController {
     // Clean up any existing dropdown
     this.destroyResumeDropdown();
 
+    // Get all conversations from plugin
     const conversations = plugin.getConversationList();
     if (conversations.length === 0) {
       new Notice('No conversations to resume');
@@ -1053,16 +1016,23 @@ export class InputController {
       state.currentConversationId,
       {
         onSelect: (id) => {
+          console.log('[Resume] onSelect called with id:', id);
           this.destroyResumeDropdown();
-          openConversation(id).catch((err: unknown) => {
+          console.log('[Resume] calling openConversation');
+          openConversation(id).then(() => {
+            console.log('[Resume] openConversation succeeded');
+          }).catch((err: unknown) => {
+            console.error('[Resume] openConversation failed:', err);
             const msg = err instanceof Error ? err.message : String(err);
             new Notice(`Failed to open conversation: ${msg}`);
           });
         },
         onDismiss: () => {
+          console.log('[Resume] onDismiss called');
           this.destroyResumeDropdown();
         },
       }
     );
   }
+
 }

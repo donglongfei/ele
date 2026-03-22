@@ -9,6 +9,13 @@ import type {
   ToolCallInfo,
   UsageInfo,
 } from '../../../core/types';
+
+/** Applied instruction skill for current message only */
+export interface AppliedInstructionSkill {
+  name: string;
+  description?: string;
+  content: string;
+}
 import type { BrowserSelectionContext } from '../../../utils/browser';
 import type { CanvasSelectionContext } from '../../../utils/canvas';
 import type { EditorSelectionContext } from '../../../utils/editor';
@@ -109,6 +116,9 @@ export interface ChatStateData {
 
   // Saved permission mode before entering plan mode (for Shift+Tab toggle restore)
   prePlanPermissionMode: PermissionMode | null;
+
+  // Instruction skills applied to current message only (not persisted)
+  appliedInstructionSkills: AppliedInstructionSkill[];
 }
 
 /** Callbacks for ChatState changes. */
@@ -120,6 +130,7 @@ export interface ChatStateCallbacks {
   onTodosChanged?: (todos: TodoItem[] | null) => void;
   onAttentionChanged?: (needsAttention: boolean) => void;
   onAutoScrollChanged?: (enabled: boolean) => void;
+  onAppliedSkillsChanged?: () => void;
 }
 
 /** Options for query execution. */

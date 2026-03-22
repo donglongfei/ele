@@ -10,10 +10,9 @@ import { findNodeExecutable, formatContextLimit, getCustomModelIds, getEnhancedP
 import { EleView } from '../chat/EleView';
 import { buildNavMappingText, parseNavMappings } from './keyboardNavigation';
 import { AgentSettings } from './ui/AgentSettings';
+import { CommandsAndSkillsManager } from './ui/CommandsAndSkillsManager';
 import { EnvSnippetManager } from './ui/EnvSnippetManager';
 import { McpSettingsManager } from './ui/McpSettingsManager';
-import { SkillSettingsManager } from './ui/SkillSettingsManager';
-import { SlashCommandSettings } from './ui/SlashCommandSettings';
 
 function formatHotkey(hotkey: { modifiers: string[]; key: string }): string {
   const isMac = navigator.platform.includes('Mac');
@@ -389,18 +388,15 @@ export class OpenCodianSettingTab extends PluginSettingTab {
     addHotkeySettingRow(hotkeyGrid, this.app, 'claudian:new-tab', 'settings.newTabHotkey');
     addHotkeySettingRow(hotkeyGrid, this.app, 'claudian:close-current-tab', 'settings.closeTabHotkey');
 
-    new Setting(containerEl).setName(t('settings.slashCommands.name')).setHeading();
+    // Commands and Skills (Unified Section)
+    new Setting(containerEl).setName(t('settings.commandsAndSkills.name')).setHeading();
 
-    const slashCommandsDesc = containerEl.createDiv({ cls: 'opencodian-sp-settings-desc' });
-    const descP = slashCommandsDesc.createEl('p', { cls: 'setting-item-description' });
-    descP.appendText(t('settings.slashCommands.desc') + ' ');
-    descP.createEl('a', {
-      text: 'Learn more',
-      href: 'https://code.claude.com/docs/en/skills',
-    });
+    const commandsAndSkillsDesc = containerEl.createDiv({ cls: 'opencodian-cas-settings-desc' });
+    const descP = commandsAndSkillsDesc.createEl('p', { cls: 'setting-item-description' });
+    descP.appendText(t('settings.commandsAndSkills.desc') + ' ');
 
-    const slashCommandsContainer = containerEl.createDiv({ cls: 'opencodian-slash-commands-container' });
-    new SlashCommandSettings(slashCommandsContainer, this.plugin);
+    const commandsAndSkillsContainer = containerEl.createDiv({ cls: 'opencodian-commands-and-skills-container' });
+    new CommandsAndSkillsManager(commandsAndSkillsContainer, this.plugin);
 
     new Setting(containerEl)
       .setName(t('settings.hiddenSlashCommands.name'))
@@ -442,17 +438,6 @@ export class OpenCodianSettingTab extends PluginSettingTab {
 
     const mcpContainer = containerEl.createDiv({ cls: 'opencodian-mcp-container' });
     new McpSettingsManager(mcpContainer, this.plugin);
-
-    new Setting(containerEl).setName(t('settings.skills.name')).setHeading();
-
-    const skillsDesc = containerEl.createDiv({ cls: 'opencodian-skill-settings-desc' });
-    skillsDesc.createEl('p', {
-      text: t('settings.skills.desc'),
-      cls: 'setting-item-description',
-    });
-
-    const skillsContainer = containerEl.createDiv({ cls: 'opencodian-skills-container' });
-    new SkillSettingsManager(skillsContainer, this.plugin);
 
     new Setting(containerEl).setName(t('settings.safety')).setHeading();
 

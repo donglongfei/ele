@@ -109,7 +109,7 @@ export class ResumeSessionDropdown {
   }
 
   private updateSelection(): void {
-    const items = this.dropdownEl.querySelectorAll('.claudian-resume-item');
+    const items = this.dropdownEl.querySelectorAll('.ele-resume-item');
     items?.forEach((item, index) => {
       if (index === this.selectedIndex) {
         item.addClass('selected');
@@ -158,11 +158,15 @@ export class ResumeSessionDropdown {
         text: isCurrent ? 'Current session' : this.formatDate(conv.lastResponseAt ?? conv.createdAt),
       });
 
-      item.addEventListener('click', () => {
+      item.addEventListener('click', (e) => {
+        console.log('[ResumeSessionDropdown] Item clicked:', conv.id, 'isCurrent:', isCurrent);
+        e.stopPropagation();
         if (isCurrent) {
           this.dismiss();
           return;
         }
+        this.inputEl.removeEventListener('input', this.onInput);
+        console.log('[ResumeSessionDropdown] Calling onSelect');
         this.callbacks.onSelect(conv.id);
       });
 

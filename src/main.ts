@@ -566,7 +566,37 @@ export default class ElePlugin extends Plugin {
   }
 
   private async loadSdkMessagesForConversation(conversation: Conversation): Promise<void> {
-    if (!conversation.isNative || conversation.sdkMessagesLoaded) return;
+    console.log('[loadSdkMessages] isNative:', conversation.isNative, 'sdkMessagesLoaded:', conversation.sdkMessagesLoaded, 'current messages:', conversation.messages.length);
+    
+    // If already loaded, skip
+    if (conversation.sdkMessagesLoaded) {
+      console.log('[loadSdkMessages] Already loaded, skipping');
+      return;
+    }
+    
+    // If conversation already has messages (from JSONL), mark as loaded and return
+    if (conversation.messages.length > 0) {
+      console.log('[loadSdkMessages] Messages already in conversation:', conversation.messages.length);
+      conversation.sdkMessagesLoaded = true;
+      return;
+    }
+    
+    // Try to load from JSONL first (for both native and legacy)
+    console.log('[loadSdkMessages] Trying to load from JSONL');
+    const jsonlConversation = await this.storage.sessions.loadConversation(conversation.id);
+    if (jsonlConversation && jsonlConversation.messages.length > 0) {
+      conversation.messages = jsonlConversation.messages;
+      conversation.sdkMessagesLoaded = true;
+      console.log('[loadSdkMessages] Loaded from JSONL:', jsonlConversation.messages.length);
+      return;
+    }
+    
+    // If not native, we're done
+    if (!conversation.isNative) {
+      console.log('[loadSdkMessages] Not native, no JSONL messages found');
+      conversation.sdkMessagesLoaded = true;
+      return;
+    }
 
     const vaultPath = getVaultPath(this.app);
     if (!vaultPath) return;
@@ -580,7 +610,13 @@ export default class ElePlugin extends Plugin {
           conversation.sdkSessionId ?? conversation.sessionId,
         ].filter((id): id is string => !!id);
 
-    if (allSessionIds.length === 0) return;
+    console.log('[loadSdkMessages] allSessionIds:', allSessionIds);
+
+    if (allSessionIds.length === 0) {
+      console.log('[loadSdkMessages] No session IDs found, marking as loaded');
+      conversation.sdkMessagesLoaded = true;
+      return;
+    }
 
     const allSdkMessages: ChatMessage[] = [];
     let missingSessionCount = 0;
@@ -592,7 +628,9 @@ export default class ElePlugin extends Plugin {
       : (conversation.sdkSessionId ?? conversation.sessionId);
 
     for (const sessionId of allSessionIds) {
-      if (!sdkSessionExists(vaultPath, sessionId)) {
+      const exists = sdkSessionExists(vaultPath, sessionId);
+      console.log('[loadSdkMessages] Session', sessionId, 'exists:', exists);
+      if (!exists) {
         missingSessionCount++;
         continue;
       }
@@ -619,6 +657,8 @@ export default class ElePlugin extends Plugin {
     // in vault path) or external deletion. Showing a notification every restart is
     // too intrusive and not actionable for users.
 
+    console.log('[loadSdkMessages] Results - success:', successCount, 'missing:', missingSessionCount, 'errors:', errorCount, 'total messages:', allSdkMessages.length);
+
     // Only mark as loaded if at least one session was successfully loaded,
     // or if all sessions were missing (no point retrying non-existent files).
     // If sessions exist but ALL failed to load, allow retry on next view.
@@ -626,6 +666,7 @@ export default class ElePlugin extends Plugin {
     const hasLoadErrors = errorCount > 0 && successCount === 0 && !allSessionsMissing;
     if (hasLoadErrors) {
       // Don't mark as loaded - allow retry on next view
+      console.log('[loadSdkMessages] Has load errors, not marking as loaded');
       return;
     }
 
@@ -654,6 +695,7 @@ export default class ElePlugin extends Plugin {
 
     conversation.messages = merged;
     conversation.sdkMessagesLoaded = true;
+    console.log('[loadSdkMessages] Set conversation.messages to:', merged.length);
   }
 
   private async enrichAsyncSubagentToolCalls(

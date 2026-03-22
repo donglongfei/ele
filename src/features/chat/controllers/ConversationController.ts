@@ -269,11 +269,24 @@ export class ConversationController {
   /** Switches to a different conversation. */
   async switchTo(id: string): Promise<void> {
     const { plugin, state, renderer, subagentManager } = this.deps;
+    console.log('[ConversationController] switchTo called:', id, 'current:', state.currentConversationId);
 
-    if (id === state.currentConversationId) return;
-    if (state.isStreaming) return;
-    if (state.isSwitchingConversation) return;
-    if (state.isCreatingConversation) return;
+    if (id === state.currentConversationId) {
+      console.log('[ConversationController] Same conversation, skipping');
+      return;
+    }
+    if (state.isStreaming) {
+      console.log('[ConversationController] Streaming, skipping');
+      return;
+    }
+    if (state.isSwitchingConversation) {
+      console.log('[ConversationController] Already switching, skipping');
+      return;
+    }
+    if (state.isCreatingConversation) {
+      console.log('[ConversationController] Creating conversation, skipping');
+      return;
+    }
 
     state.isSwitchingConversation = true;
 
@@ -284,12 +297,15 @@ export class ConversationController {
       subagentManager.clear();
 
       const conversation = await plugin.switchConversation(id);
+      console.log('[ConversationController] switchConversation returned:', conversation?.id, 'messages:', conversation?.messages?.length);
       if (!conversation) {
+        console.log('[ConversationController] No conversation found');
         return;
       }
 
       state.currentConversationId = conversation.id;
       state.messages = [...conversation.messages];
+      console.log('[ConversationController] Set state.messages to:', state.messages.length);
       state.usage = conversation.usage ?? null;
       state.autoScrollEnabled = plugin.settings.enableAutoScroll ?? true;
 
@@ -336,10 +352,12 @@ export class ConversationController {
         mcpServerSelector?.clearEnabled();
       }
 
+      console.log('[ConversationController] Rendering messages:', state.messages.length);
       const welcomeEl = renderer.renderMessages(
         state.messages,
         () => this.getGreeting()
       );
+      console.log('[ConversationController] renderMessages returned welcomeEl:', !!welcomeEl);
       this.deps.setWelcomeEl(welcomeEl);
 
       this.deps.getHistoryDropdown()?.removeClass('visible');
@@ -654,7 +672,7 @@ export class ConversationController {
 
       // Show regenerate button if title generation failed, or loading indicator if pending
       if (conv.titleGenerationStatus === 'pending') {
-        const loadingEl = actions.createEl('span', { cls: 'ele-action-btn claudian-action-loading' });
+        const loadingEl = actions.createEl('span', { cls: 'ele-action-btn ele-action-loading' });
         setIcon(loadingEl, 'loader-2');
         loadingEl.setAttribute('aria-label', 'Generating title...');
       } else if (conv.titleGenerationStatus === 'failed') {
@@ -679,7 +697,7 @@ export class ConversationController {
         this.showRenameInput(item, conv.id, conv.title);
       });
 
-      const deleteBtn = actions.createEl('button', { cls: 'ele-action-btn claudian-delete-btn' });
+      const deleteBtn = actions.createEl('button', { cls: 'ele-action-btn ele-delete-btn' });
       setIcon(deleteBtn, 'trash-2');
       deleteBtn.setAttribute('aria-label', 'Delete');
       deleteBtn.addEventListener('click', async (e) => {
@@ -701,7 +719,7 @@ export class ConversationController {
 
   /** Shows inline rename input for a conversation. */
   private showRenameInput(item: HTMLElement, convId: string, currentTitle: string): void {
-    const titleEl = item.querySelector('.claudian-history-item-title') as HTMLElement;
+    const titleEl = item.querySelector('.ele-history-item-title') as HTMLElement;
     if (!titleEl) return;
 
     const input = document.createElement('input');
@@ -832,7 +850,7 @@ export class ConversationController {
     fileCtx?.autoAttachActiveFile();
 
     // Only add greeting if not already present
-    if (!welcomeEl.querySelector('.claudian-welcome-greeting')) {
+    if (!welcomeEl.querySelector('.ele-welcome-greeting')) {
       welcomeEl.createDiv({ cls: 'ele-welcome-greeting', text: this.getGreeting() });
     }
 

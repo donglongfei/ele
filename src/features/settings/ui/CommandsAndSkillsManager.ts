@@ -1,10 +1,35 @@
-import type { App, ToggleComponent } from 'obsidian';
-import { Modal, Notice, setIcon, Setting } from 'obsidian';
+import type { App } from 'obsidian';
+import { Modal, Notice, setIcon, Setting, type ToggleComponent } from 'obsidian';
 
 import type { SlashCommand } from '../../../core/types';
 import { t } from '../../../i18n';
 import type ElePlugin from '../../../main';
-import { extractFirstParagraph, isSkill, normalizeArgumentHint, parseSlashCommandContent, validateCommandName } from '../../../utils/slashCommand';
+import { isSkill, normalizeArgumentHint, parseSlashCommandContent, validateCommandName } from '../../../utils/slashCommand';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface SkillInfo {
+  name: string;
+  description: string;
+  source: 'obsidian' | 'openclaw';
+  path: string;
+  userInvocable?: boolean;
+  location: string;
+}
+
+interface CommandInfo {
+  id: string;
+  name: string;
+  description?: string;
+  argumentHint?: string;
+  isSkill: boolean;
+}
+
+// ============================================================================
+// Command/Skill Modal (reused from SlashCommandSettings)
+// ============================================================================
 
 function resolveAllowedTools(inputValue: string, parsedTools?: string[]): string[] | undefined {
   const trimmed = inputValue.trim();
@@ -17,7 +42,7 @@ function resolveAllowedTools(inputValue: string, parsedTools?: string[]): string
   return undefined;
 }
 
-export class SlashCommandModal extends Modal {
+class CommandModal extends Modal {
   private plugin: ElePlugin;
   private existingCmd: SlashCommand | null;
   private onSave: (cmd: SlashCommand) => Promise<void>;
@@ -279,7 +304,11 @@ export class SlashCommandModal extends Modal {
   }
 }
 
-export class SlashCommandSettings {
+// ============================================================================
+// Main Manager
+// ============================================================================
+
+export class CommandsAndSkillsManager {
   private containerEl: HTMLElement;
   private plugin: ElePlugin;
 
@@ -289,86 +318,230 @@ export class SlashCommandSettings {
     this.render();
   }
 
-  private render(): void {
+  private async render(): Promise<void> {
     this.containerEl.empty();
 
-    const headerEl = this.containerEl.createDiv({ cls: 'ele-sp-header' });
-    headerEl.createSpan({ text: t('settings.slashCommands.name'), cls: 'ele-sp-label' });
+    // Add action button header
+    const headerEl = this.containerEl.createDiv({ cls: 'ele-cas-header' });
+    headerEl.createSpan({ text: t('settings.slashCommands.name'), cls: 'ele-cas-label' });
 
-    const actionsEl = headerEl.createDiv({ cls: 'ele-sp-header-actions' });
+    const actionsEl = headerEl.createDiv({ cls: 'ele-cas-header-actions' });
 
     const addBtn = actionsEl.createEl('button', {
       cls: 'ele-settings-action-btn',
-      attr: { 'aria-label': 'Add' },
+      attr: { 'aria-label': 'Add Command or Skill' },
     });
     setIcon(addBtn, 'plus');
     addBtn.addEventListener('click', () => this.openCommandModal(null));
 
-    const commands = this.plugin.settings.slashCommands;
+    // Refresh button
+    const refreshBtn = actionsEl.createEl('button', {
+      cls: 'ele-settings-action-btn',
+      attr: { 'aria-label': 'Refresh' },
+    });
+    setIcon(refreshBtn, 'refresh-cw');
+    refreshBtn.addEventListener('click', () => this.refresh());
 
-    if (commands.length === 0) {
-      const emptyEl = this.containerEl.createDiv({ cls: 'ele-sp-empty-state' });
-      emptyEl.setText('No commands or skills configured. Click + to create one.');
-      return;
+    // Load data
+    const commands = await this.loadCommands();
+    const obsidianSkills = await this.loadObsidianSkills();
+    const openclawSkills = await this.loadOpenclawSkills();
+
+    // Section 1: Commands
+    if (commands.length > 0) {
+      this.renderSectionHeader('Commands', `.opencode/commands/`);
+      const listEl = this.containerEl.createDiv({ cls: 'ele-cas-list' });
+      for (const cmd of commands) {
+        this.renderCommandItem(listEl, cmd);
+      }
     }
 
-    const listEl = this.containerEl.createDiv({ cls: 'ele-sp-list' });
+    // Section 2: Obsidian Skills
+    if (obsidianSkills.length > 0) {
+      this.renderSectionHeader('Obsidian Skills', `.opencode/skills/`);
+      const listEl = this.containerEl.createDiv({ cls: 'ele-cas-list' });
+      for (const skill of obsidianSkills) {
+        this.renderSkillItem(listEl, skill, 'obsidian');
+      }
+    }
 
-    for (const cmd of commands) {
-      this.renderCommandItem(listEl, cmd);
+    // Section 3: OpenClaw Skills
+    if (openclawSkills.length > 0) {
+      this.renderSectionHeader('OpenClaw Skills', `~/.openclaw/skills/`);
+      const listEl = this.containerEl.createDiv({ cls: 'ele-cas-list' });
+      for (const skill of openclawSkills) {
+        this.renderSkillItem(listEl, skill, 'openclaw');
+      }
+    }
+
+    // Empty state
+    if (commands.length === 0 && obsidianSkills.length === 0 && openclawSkills.length === 0) {
+      const emptyEl = this.containerEl.createDiv({ cls: 'ele-cas-empty-state' });
+      emptyEl.setText('No commands or skills configured. Click + to create one.');
     }
   }
 
-  private renderCommandItem(listEl: HTMLElement, cmd: SlashCommand): void {
-    const itemEl = listEl.createDiv({ cls: 'ele-sp-item' });
+  private renderSectionHeader(title: string, location: string): void {
+    const sectionEl = this.containerEl.createDiv({ cls: 'ele-cas-section-header' });
+    const titleEl = sectionEl.createSpan({ cls: 'ele-cas-section-title' });
+    titleEl.setText(title);
+    const locEl = sectionEl.createSpan({ cls: 'ele-cas-section-location' });
+    locEl.setText(` (${location})`);
+  }
 
-    const infoEl = itemEl.createDiv({ cls: 'ele-sp-info' });
+  private async loadCommands(): Promise<CommandInfo[]> {
+    return this.plugin.settings.slashCommands
+      .filter(cmd => !isSkill(cmd))
+      .map(cmd => ({
+        id: cmd.id,
+        name: cmd.name,
+        description: cmd.description,
+        argumentHint: cmd.argumentHint,
+        isSkill: false,
+      }));
+  }
 
-    const headerRow = infoEl.createDiv({ cls: 'ele-sp-item-header' });
+  private async loadObsidianSkills(): Promise<SkillInfo[]> {
+    const skills: SkillInfo[] = [];
 
-    const nameEl = headerRow.createSpan({ cls: 'ele-sp-item-name' });
-    nameEl.setText(`/${cmd.name}`);
+    try {
+      const slashCommands = await this.plugin.storage.skills.loadAll();
 
-    if (isSkill(cmd)) {
-      headerRow.createSpan({ text: 'skill', cls: 'ele-slash-item-badge' });
+      for (const cmd of slashCommands) {
+        skills.push({
+          name: cmd.name,
+          description: cmd.description || '',
+          source: 'obsidian',
+          path: '',
+          userInvocable: cmd.userInvocable,
+          location: '.opencode/skills/',
+        });
+      }
+    } catch (err) {
+      console.error('[CommandsAndSkillsManager] Failed to load Obsidian skills:', err);
     }
 
+    return skills;
+  }
+
+  private async loadOpenclawSkills(): Promise<SkillInfo[]> {
+    const skills: SkillInfo[] = [];
+
+    try {
+      // Try to load from OpenClaw global directory
+      const openclawSkills = await this.loadOpenclawSkillsFromDisk();
+      skills.push(...openclawSkills);
+    } catch (err) {
+      console.error('[CommandsAndSkillsManager] Failed to load OpenClaw skills:', err);
+    }
+
+    return skills;
+  }
+
+  private async loadOpenclawSkillsFromDisk(): Promise<SkillInfo[]> {
+    const skills: SkillInfo[] = [];
+
+    try {
+      // Use window.require for Electron environment (Obsidian)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const electron = (window as any).require;
+      if (!electron) {
+        console.log('[CommandsAndSkillsManager] Not in Electron environment, skipping OpenClaw skills');
+        return skills;
+      }
+
+      const fs = electron('fs');
+      const path = electron('path');
+      const os = electron('os');
+
+      const openclawSkillsPath = path.join(os.homedir(), '.openclaw', 'skills');
+
+      if (!fs.existsSync(openclawSkillsPath)) {
+        return skills;
+      }
+
+      const entries = fs.readdirSync(openclawSkillsPath, { withFileTypes: true });
+
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+
+        const skillName = entry.name;
+        const skillFilePath = path.join(openclawSkillsPath, skillName, 'SKILL.md');
+
+        if (!fs.existsSync(skillFilePath)) continue;
+
+        try {
+          const content = fs.readFileSync(skillFilePath, 'utf-8');
+          const parsed = parseSlashCommandContent(content);
+
+          skills.push({
+            name: skillName,
+            description: parsed.description || '',
+            source: 'openclaw',
+            path: skillFilePath,
+            userInvocable: parsed.userInvocable,
+            location: '~/.openclaw/skills/',
+          });
+        } catch (parseErr) {
+          console.warn(`[CommandsAndSkillsManager] Failed to parse skill ${skillName}:`, parseErr);
+        }
+      }
+    } catch (err) {
+      console.error('[CommandsAndSkillsManager] Error loading OpenClaw skills:', err);
+    }
+
+    return skills;
+  }
+
+  private renderCommandItem(listEl: HTMLElement, cmd: CommandInfo): void {
+    const itemEl = listEl.createDiv({ cls: 'ele-cas-item' });
+
+    const infoEl = itemEl.createDiv({ cls: 'ele-cas-info' });
+
+    const headerRow = infoEl.createDiv({ cls: 'ele-cas-item-header' });
+
+    const nameEl = headerRow.createSpan({ cls: 'ele-cas-item-name' });
+    nameEl.setText(`/${cmd.name}`);
+
     if (cmd.argumentHint) {
-      const hintEl = headerRow.createSpan({ cls: 'ele-slash-item-hint' });
+      const hintEl = headerRow.createSpan({ cls: 'ele-cas-item-hint' });
       hintEl.setText(cmd.argumentHint);
     }
 
     if (cmd.description) {
-      const descEl = infoEl.createDiv({ cls: 'ele-sp-item-desc' });
+      const descEl = infoEl.createDiv({ cls: 'ele-cas-item-desc' });
       descEl.setText(cmd.description);
     }
 
-    const actionsEl = itemEl.createDiv({ cls: 'ele-sp-item-actions' });
+    const actionsEl = itemEl.createDiv({ cls: 'ele-cas-item-actions' });
 
     const editBtn = actionsEl.createEl('button', {
       cls: 'ele-settings-action-btn',
       attr: { 'aria-label': 'Edit' },
     });
     setIcon(editBtn, 'pencil');
-    editBtn.addEventListener('click', () => this.openCommandModal(cmd));
+    editBtn.addEventListener('click', () => {
+      const slashCmd = this.plugin.settings.slashCommands.find(c => c.id === cmd.id);
+      if (slashCmd) {
+        this.openCommandModal(slashCmd);
+      }
+    });
 
-    if (!isSkill(cmd)) {
-      const convertBtn = actionsEl.createEl('button', {
-        cls: 'ele-settings-action-btn',
-        attr: { 'aria-label': 'Convert to skill' },
-      });
-      setIcon(convertBtn, 'package');
-      convertBtn.addEventListener('click', async () => {
-        try {
-          await this.transformToSkill(cmd);
-        } catch {
-          new Notice('Failed to convert to skill');
-        }
-      });
-    }
+    const convertBtn = actionsEl.createEl('button', {
+      cls: 'ele-settings-action-btn',
+      attr: { 'aria-label': 'Convert to skill' },
+    });
+    setIcon(convertBtn, 'package');
+    convertBtn.addEventListener('click', async () => {
+      try {
+        await this.transformToSkill(cmd);
+      } catch {
+        new Notice('Failed to convert to skill');
+      }
+    });
 
     const deleteBtn = actionsEl.createEl('button', {
-      cls: 'ele-settings-action-btn claudian-settings-delete-btn',
+      cls: 'ele-settings-action-btn ele-settings-delete-btn',
       attr: { 'aria-label': 'Delete' },
     });
     setIcon(deleteBtn, 'trash-2');
@@ -376,14 +549,78 @@ export class SlashCommandSettings {
       try {
         await this.deleteCommand(cmd);
       } catch {
-        const label = isSkill(cmd) ? 'skill' : 'slash command';
-        new Notice(`Failed to delete ${label}`);
+        new Notice('Failed to delete command');
       }
     });
   }
 
+  private renderSkillItem(listEl: HTMLElement, skill: SkillInfo, source: 'obsidian' | 'openclaw'): void {
+    const itemEl = listEl.createDiv({ cls: 'ele-cas-item' });
+
+    const infoEl = itemEl.createDiv({ cls: 'ele-cas-info' });
+
+    const headerRow = infoEl.createDiv({ cls: 'ele-cas-item-header' });
+
+    const nameEl = headerRow.createSpan({ cls: 'ele-cas-item-name' });
+    nameEl.setText(skill.name);
+
+    // Source badge
+    const badgeEl = headerRow.createSpan({ cls: `ele-cas-badge ele-cas-badge--${source}` });
+    badgeEl.setText(source);
+
+    if (skill.userInvocable) {
+      const userBadgeEl = headerRow.createSpan({ cls: 'ele-cas-badge ele-cas-badge--user' });
+      userBadgeEl.setText('#instruction');
+    }
+
+    if (skill.description) {
+      const descEl = infoEl.createDiv({ cls: 'ele-cas-item-desc' });
+      descEl.setText(skill.description);
+    }
+
+    const actionsEl = itemEl.createDiv({ cls: 'ele-cas-item-actions' });
+
+    // Only allow edit/delete for Obsidian skills
+    if (source === 'obsidian') {
+      const editBtn = actionsEl.createEl('button', {
+        cls: 'ele-settings-action-btn',
+        attr: { 'aria-label': 'Edit' },
+      });
+      setIcon(editBtn, 'pencil');
+      editBtn.addEventListener('click', () => {
+        const slashCmd = this.plugin.settings.slashCommands.find(
+          c => isSkill(c) && c.name === skill.name
+        );
+        if (slashCmd) {
+          this.openCommandModal(slashCmd);
+        }
+      });
+
+      const deleteBtn = actionsEl.createEl('button', {
+        cls: 'ele-settings-action-btn ele-settings-delete-btn',
+        attr: { 'aria-label': 'Delete' },
+      });
+      setIcon(deleteBtn, 'trash-2');
+      deleteBtn.addEventListener('click', async () => {
+        try {
+          await this.deleteObsidianSkill(skill);
+        } catch {
+          new Notice('Failed to delete skill');
+        }
+      });
+    } else {
+      // OpenClaw skills are read-only, show info
+      const infoBtn = actionsEl.createEl('button', {
+        cls: 'ele-settings-action-btn',
+        attr: { 'aria-label': 'Read-only' },
+      });
+      setIcon(infoBtn, 'lock');
+      infoBtn.title = 'OpenClaw skills are read-only. Edit in ~/.openclaw/skills/';
+    }
+  }
+
   private openCommandModal(existingCmd: SlashCommand | null): void {
-    const modal = new SlashCommandModal(
+    const modal = new CommandModal(
       this.plugin.app,
       this.plugin,
       existingCmd,
@@ -399,51 +636,72 @@ export class SlashCommandSettings {
   }
 
   private async saveCommand(cmd: SlashCommand, existing: SlashCommand | null): Promise<void> {
-    // Save new file first (safer: if this fails, old file still exists)
     await this.storageFor(cmd).save(cmd);
 
-    // Delete old file only after successful save (if name changed)
     if (existing && existing.name !== cmd.name) {
       await this.storageFor(existing).delete(existing.id);
     }
 
     await this.reloadCommands();
-
     this.render();
-    const label = isSkill(cmd) ? 'Skill' : 'Slash command';
+
+    const label = isSkill(cmd) ? 'Skill' : 'Command';
     new Notice(`${label} "/${cmd.name}" ${existing ? 'updated' : 'created'}`);
   }
 
-  private async deleteCommand(cmd: SlashCommand): Promise<void> {
-    await this.storageFor(cmd).delete(cmd.id);
+  private async deleteCommand(cmd: CommandInfo): Promise<void> {
+    const slashCmd = this.plugin.settings.slashCommands.find(c => c.id === cmd.id);
+    if (!slashCmd) return;
 
+    await this.plugin.storage.commands.delete(slashCmd.id);
     await this.reloadCommands();
-
     this.render();
-    const label = isSkill(cmd) ? 'Skill' : 'Slash command';
-    new Notice(`${label} "/${cmd.name}" deleted`);
+
+    new Notice(`Command "/${cmd.name}" deleted`);
   }
 
-  private async transformToSkill(cmd: SlashCommand): Promise<void> {
+  private async deleteObsidianSkill(skill: SkillInfo): Promise<void> {
+    const slashCmd = this.plugin.settings.slashCommands.find(
+      c => isSkill(c) && c.name === skill.name
+    );
+    if (!slashCmd) return;
+
+    await this.plugin.storage.skills.delete(slashCmd.id);
+    await this.reloadCommands();
+    this.render();
+
+    new Notice(`Skill "${skill.name}" deleted`);
+  }
+
+  private async transformToSkill(cmd: CommandInfo): Promise<void> {
     const skillName = cmd.name.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 64);
 
     const existingSkill = this.plugin.settings.slashCommands.find(
       c => isSkill(c) && c.name === skillName
     );
     if (existingSkill) {
-      new Notice(`A skill named "/${skillName}" already exists`);
+      new Notice(`A skill named "${skillName}" already exists`);
       return;
     }
 
-    const description = cmd.description || extractFirstParagraph(cmd.content);
+    const description = cmd.description || '';
 
     const skill: SlashCommand = {
-      ...cmd,
       id: `skill-${skillName}`,
       name: skillName,
       description,
       source: 'user',
+      content: '', // Commands don't have content stored the same way
     };
+
+    // Get the original command to copy its content
+    const originalCmd = this.plugin.settings.slashCommands.find(c => c.id === cmd.id);
+    if (originalCmd) {
+      skill.content = originalCmd.content;
+      skill.argumentHint = originalCmd.argumentHint;
+      skill.model = originalCmd.model;
+      skill.allowedTools = originalCmd.allowedTools;
+    }
 
     await this.plugin.storage.skills.save(skill);
     await this.plugin.storage.commands.delete(cmd.id);
@@ -458,6 +716,6 @@ export class SlashCommandSettings {
   }
 
   public refresh(): void {
-    this.render();
+    void this.render();
   }
 }

@@ -177,7 +177,18 @@ export class TabManager implements TabManagerInterface {
 
       // Load conversation if not already loaded
       if (tab.conversationId && tab.state.messages.length === 0) {
-        await tab.controllers.conversationController?.switchTo(tab.conversationId);
+        // First load conversation data to check if messages exist
+        const conversation = await this.plugin.getConversationById(tab.conversationId);
+        if (conversation && conversation.messages.length > 0) {
+          // Sync conversation messages to tab state
+          tab.state.messages = [...conversation.messages];
+          tab.renderer?.renderMessages(tab.state.messages, () => {
+            return tab.controllers.conversationController?.getGreeting() ?? '';
+          });
+        } else {
+          // Load via controller if not in conversation
+          await tab.controllers.conversationController?.switchTo(tab.conversationId);
+        }
       } else if (tab.conversationId && tab.state.messages.length > 0 && tab.service) {
         // Tab already has messages loaded - sync service session to conversation
         // This handles the case where user switches between tabs with different sessions
@@ -336,9 +347,11 @@ export class TabManager implements TabManagerInterface {
    * @param preferNewTab If true, prefer opening in a new tab.
    */
   async openConversation(conversationId: string, preferNewTab = false): Promise<void> {
+    console.log('[TabManager] openConversation called:', conversationId, 'preferNewTab:', preferNewTab);
     // Check if conversation is already open in this view's tabs
     for (const tab of this.tabs.values()) {
       if (tab.conversationId === conversationId) {
+        console.log('[TabManager] Conversation already open in tab:', tab.id);
         await this.switchToTab(tab.id);
         return;
       }

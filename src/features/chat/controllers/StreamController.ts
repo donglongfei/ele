@@ -217,13 +217,13 @@ export class StreamController {
         // If already rendered, update the header name + summary
         const toolEl = state.toolCallElements.get(chunk.id);
         if (toolEl) {
-          const nameEl = toolEl.querySelector('.claudian-tool-name') as HTMLElement | null
-            ?? toolEl.querySelector('.claudian-write-edit-name') as HTMLElement | null;
+          const nameEl = toolEl.querySelector('.ele-tool-name') as HTMLElement | null
+            ?? toolEl.querySelector('.ele-write-edit-name') as HTMLElement | null;
           if (nameEl) {
             nameEl.setText(getToolName(existingToolCall.name, existingToolCall.input));
           }
-          const summaryEl = toolEl.querySelector('.claudian-tool-summary') as HTMLElement | null
-            ?? toolEl.querySelector('.claudian-write-edit-summary') as HTMLElement | null;
+          const summaryEl = toolEl.querySelector('.ele-tool-summary') as HTMLElement | null
+            ?? toolEl.querySelector('.ele-write-edit-summary') as HTMLElement | null;
           if (summaryEl) {
             summaryEl.setText(getToolSummary(existingToolCall.name, existingToolCall.input));
           }

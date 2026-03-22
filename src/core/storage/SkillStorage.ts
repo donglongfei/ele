@@ -1,4 +1,4 @@
-import { parsedToSlashCommand, parseSlashCommandContent, serializeCommand } from '../../utils/slashCommand';
+import { isSkill, parsedToSlashCommand, parseSlashCommandContent, serializeCommand } from '../../utils/slashCommand';
 import type { SlashCommand } from '../types';
 import type { VaultFileAdapter } from './VaultFileAdapter';
 
@@ -15,25 +15,33 @@ export class SkillStorage {
     // Helper to load from a path
     const loadFromPath = async (basePath: string) => {
       try {
-        if (!(await this.adapter.exists(basePath))) {
+        const exists = await this.adapter.exists(basePath);
+        console.log(`[SkillStorage] Checking ${basePath}: ${exists ? 'exists' : 'not found'}`);
+        if (!exists) {
           return;
         }
 
         const folders = await this.adapter.listFolders(basePath);
+        console.log(`[SkillStorage] Found folders in ${basePath}:`, folders);
 
         for (const folder of folders) {
           const skillName = folder.split('/').pop()!;
           if (seenNames.has(skillName)) {
+            console.log(`[SkillStorage] Skipping duplicate: ${skillName}`);
             continue; // Skip duplicates
           }
 
           const skillPath = `${basePath}/${skillName}/SKILL.md`;
 
           try {
-            if (!(await this.adapter.exists(skillPath))) continue;
+            const skillExists = await this.adapter.exists(skillPath);
+            console.log(`[SkillStorage] Checking ${skillPath}: ${skillExists ? 'exists' : 'not found'}`);
+            if (!skillExists) continue;
 
             const content = await this.adapter.read(skillPath);
+            console.log(`[SkillStorage] Reading ${skillPath}, content length: ${content.length}`);
             const parsed = parseSlashCommandContent(content);
+            console.log(`[SkillStorage] Parsed ${skillName}:`, { userInvocable: parsed.userInvocable, description: parsed.description });
 
             skills.push(parsedToSlashCommand(parsed, {
               id: `skill-${skillName}`,
@@ -42,11 +50,14 @@ export class SkillStorage {
             }));
 
             seenNames.add(skillName);
-          } catch {
+            console.log(`[SkillStorage] Loaded skill: ${skillName}`);
+          } catch (err) {
+            console.error(`[SkillStorage] Error loading skill ${skillName}:`, err);
             // Non-critical: skip malformed skill files
           }
         }
-      } catch {
+      } catch (err) {
+        console.error(`[SkillStorage] Error loading from ${basePath}:`, err);
         // Non-critical: directory may not exist
       }
     };
@@ -88,5 +99,26 @@ export class SkillStorage {
         // Ignore errors
       }
     }
+  }
+
+  /**
+   * Load all user-invocable instruction skills.
+   * These are skills with `userInvocable: true` that can be directly applied
+   * to the system prompt without AI refinement.
+   */
+  async loadInstructionSkills(): Promise<SlashCommand[]> {
+    console.log('[SkillStorage] Loading instruction skills...');
+    const allSkills = await this.loadAll();
+    console.log(`[SkillStorage] Total skills loaded: ${allSkills.length}`);
+    
+    const instructionSkills = allSkills.filter(skill => {
+      const isSkillType = isSkill(skill);
+      const isUserInvocable = skill.userInvocable === true;
+      console.log(`[SkillStorage] Checking skill ${skill.name}: isSkill=${isSkillType}, userInvocable=${isUserInvocable}`);
+      return isSkillType && isUserInvocable;
+    });
+    
+    console.log(`[SkillStorage] Instruction skills found: ${instructionSkills.length}`);
+    return instructionSkills;
   }
 }

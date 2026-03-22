@@ -271,6 +271,13 @@ export interface EleSettings {
 
   // Slash commands
   hiddenSlashCommands: string[];  // Command names to hide from dropdown (user preference)
+
+  // Web Scraper Tool Configuration
+  webScraperNodeBin: string;        // Path to Node.js binary (e.g., /opt/homebrew/bin/node)
+  webScraperToolPath: string;       // Path to scraper.js script
+  webScraperOutputDir: string;      // Default output directory for clippings (relative to vault or absolute)
+  webScraperDelay: number;          // Default delay between requests in ms (default: 2000)
+  webScraperTimeout: number;        // Page load timeout in ms (default: 60000)
 }
 
 /** Default Claudian-specific settings. */
@@ -344,6 +351,13 @@ export const DEFAULT_SETTINGS: EleSettings = {
 
   // Slash commands
   hiddenSlashCommands: [],  // No commands hidden by default
+
+  // Web Scraper Tool Configuration
+  webScraperNodeBin: '',                                          // Empty = auto-detect from PATH
+  webScraperToolPath: '$HOME/.openclaw/workspace/tools/web-scraper/scraper.js',
+  webScraperOutputDir: 'Clippings',                              // Relative to vault root
+  webScraperDelay: 2000,                                          // 2 seconds between requests
+  webScraperTimeout: 60000,                                       // 60 seconds page load timeout
 };
 
 /** Default CC-compatible settings. */

@@ -17,10 +17,12 @@ import type { SubagentManager } from '../services/SubagentManager';
 import type { TitleGenerationService } from '../services/TitleGenerationService';
 import type { ChatState } from '../state';
 import type {
+  AppliedSkillsIndicator,
   BangBashModeManager,
   ContextUsageMeter,
   ExternalContextSelector,
   FileContextManager,
+  HealthCheckIndicator,
   ImageContextManager,
   InstructionModeManager,
   McpServerSelector,
@@ -137,6 +139,8 @@ export interface TabUIComponents {
   contextUsageMeter: ContextUsageMeter | null;
   statusPanel: StatusPanel | null;
   navigationSidebar: NavigationSidebar | null;
+  healthCheckIndicator: HealthCheckIndicator | null;
+  appliedSkillsIndicator: AppliedSkillsIndicator | null;
 }
 
 /**

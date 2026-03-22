@@ -2116,4 +2116,5 @@ describe('InputController - Message Queue', () => {
       expect(mockAgentService.query).toHaveBeenCalled();
     });
   });
+
 });

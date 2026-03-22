@@ -92,4 +92,5 @@ test-*.js
 # package-lock.json
 
 .claude/
-.codex/
+.codex/00-Eleven
+vault/

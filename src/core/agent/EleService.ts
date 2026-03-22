@@ -32,7 +32,7 @@ import * as path from 'path';
 
 import type ElePlugin from '../../main';
 import { stripCurrentNoteContext } from '../../utils/context';
-import { getEnhancedPath, getMissingNodeError, parseEnvironmentVariables } from '../../utils/env';
+import { getEnhancedPath, parseEnvironmentVariables } from '../../utils/env';
 import { getPathAccessType, getVaultPath } from '../../utils/path';
 import {
   buildContextFromHistory,

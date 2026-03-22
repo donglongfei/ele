@@ -120,6 +120,8 @@ export type TranslationKey =
   // Settings - Commands and Skills
   | 'settings.slashCommands.name'
   | 'settings.slashCommands.desc'
+  | 'settings.commandsAndSkills.name'
+  | 'settings.commandsAndSkills.desc'
   | 'settings.hiddenSlashCommands.name'
   | 'settings.hiddenSlashCommands.desc'
   | 'settings.hiddenSlashCommands.placeholder'

@@ -42,6 +42,7 @@ function createInitialState(): ChatStateData {
     planFilePath: null,
     prePlanPermissionMode: null,
     pendingChannelKey: null,
+    appliedInstructionSkills: [], // Skills for current message only
   };
 }
 
@@ -401,6 +402,39 @@ export class ChatState {
     this.currentTodos = null;
     this.autoScrollEnabled = true;
     this.state.pendingChannelKey = null;
+    this.clearAppliedInstructionSkills();
+  }
+
+  // ============================================
+  // Applied Instruction Skills (for current message only)
+  // ============================================
+
+  get appliedInstructionSkills(): AppliedInstructionSkill[] {
+    return [...this.state.appliedInstructionSkills];
+  }
+
+  addAppliedInstructionSkill(skill: AppliedInstructionSkill): void {
+    // Check if already applied
+    const exists = this.state.appliedInstructionSkills.some(s => s.name === skill.name);
+    if (!exists) {
+      this.state.appliedInstructionSkills.push(skill);
+      this._callbacks.onAppliedSkillsChanged?.();
+    }
+  }
+
+  removeAppliedInstructionSkill(name: string): void {
+    const index = this.state.appliedInstructionSkills.findIndex(s => s.name === name);
+    if (index >= 0) {
+      this.state.appliedInstructionSkills.splice(index, 1);
+      this._callbacks.onAppliedSkillsChanged?.();
+    }
+  }
+
+  clearAppliedInstructionSkills(): void {
+    if (this.state.appliedInstructionSkills.length > 0) {
+      this.state.appliedInstructionSkills = [];
+      this._callbacks.onAppliedSkillsChanged?.();
+    }
   }
 
   getPersistedMessages(): ChatMessage[] {

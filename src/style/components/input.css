@@ -46,6 +46,68 @@
   display: none;
 }
 
+/* Health Check Indicator - Simple icon matching folder icon */
+.ele-health-check-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+  margin-left: 4px;
+}
+
+.ele-health-check-indicator:hover {
+  opacity: 1;
+}
+
+.ele-health-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ele-health-icon svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2px;
+}
+
+/* Connected - green */
+.ele-health-check-indicator.ele-health-connected {
+  opacity: 1;
+}
+
+.ele-health-check-indicator.ele-health-connected .ele-health-icon {
+  color: #4CAF50;
+}
+
+/* Disconnected - gray */
+.ele-health-check-indicator.ele-health-disconnected {
+  opacity: 0.4;
+}
+
+.ele-health-check-indicator.ele-health-disconnected .ele-health-icon {
+  color: var(--text-muted);
+}
+
+/* Checking - spinner */
+.ele-health-check-indicator.ele-health-checking .ele-health-icon svg {
+  animation: spin 1s linear infinite;
+  color: var(--text-muted);
+}
+
+/* Error - orange */
+.ele-health-check-indicator.ele-health-error {
+  opacity: 1;
+}
+
+.ele-health-check-indicator.ele-health-error .ele-health-icon {
+  color: #FF9800;
+}
+
 /* Selection indicator (shown when text is selected in editor) */
 /* Match file chip height (24px): chip has 16px remove button + 6px padding + 2px border */
 /* Indicator: 12px text + 10px padding (5+5) + 2px border = 24px */
@@ -93,7 +155,6 @@
   outline: none !important;
   border: none !important;
   background: transparent !important;
-  box-shadow: none !important;
 }
 
 .ele-input::placeholder {
@@ -112,91 +173,291 @@
 /* File indicator (attached files) */
 .ele-file-indicator {
   display: none;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.ele-file-chip {
-  display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 3px 6px 3px 8px;
-  background: var(--background-primary);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: var(--background-secondary);
   font-size: 12px;
-  line-height: 1;
-  max-width: 200px;
   cursor: pointer;
+  transition: background-color 0.2s ease;
 }
 
-.ele-file-chip-icon {
+.ele-file-indicator:hover {
+  background: var(--background-modifier-hover);
+}
+
+.ele-file-indicator.visible {
   display: flex;
-  align-items: center;
-  color: var(--text-muted);
-  flex-shrink: 0;
 }
 
-.ele-file-chip-icon svg {
-  width: 12px;
-  height: 12px;
-}
-
-.ele-file-chip-name {
+.ele-file-indicator-name {
+  max-width: 120px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--text-normal);
 }
 
-.ele-file-chip-remove {
+.ele-file-indicator-remove {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
   cursor: pointer;
-  color: var(--text-muted);
-  font-size: 14px;
-  line-height: 1;
-  transition: background 0.15s ease, color 0.15s ease;
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
 }
 
-.ele-file-chip-remove:hover {
+.ele-file-indicator-remove:hover {
+  opacity: 1;
+  background: var(--background-modifier-hover);
+}
+
+/* Compact info */
+.ele-compact-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.ele-compact-info.ele-clickable {
+  cursor: pointer;
+}
+
+.ele-compact-info.ele-clickable:hover {
+  color: var(--text-normal);
+}
+
+/* Instruction Mode Dropdown (like slash command) */
+.ele-input-instruction-mode {
+  position: relative;
+}
+
+.ele-instruction-dropdown {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px 8px 0 0;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
+  z-index: 100;
+  margin-bottom: 4px;
+  display: none;
+}
+
+.ele-instruction-dropdown.visible {
+  display: block;
+}
+
+.ele-instruction-dropdown-header {
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+}
+
+.ele-instruction-dropdown-list {
+  padding: 4px;
+}
+
+.ele-instruction-dropdown-item {
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+  margin-bottom: 2px;
+}
+
+.ele-instruction-dropdown-item:last-child {
+  margin-bottom: 0;
+}
+
+.ele-instruction-dropdown-item:hover,
+.ele-instruction-dropdown-item.selected {
+  background: var(--background-modifier-hover);
+}
+
+.ele-instruction-dropdown-item.selected {
+  background: var(--interactive-accent-hover);
+}
+
+.ele-instruction-dropdown-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-normal);
+  display: block;
+  margin-bottom: 2px;
+}
+
+.ele-instruction-dropdown-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.ele-instruction-dropdown-item.selected .ele-instruction-dropdown-name {
+  color: var(--text-on-accent);
+}
+
+.ele-instruction-dropdown-item.selected .ele-instruction-dropdown-desc {
+  color: var(--text-on-accent);
+  opacity: 0.8;
+}
+
+/* Applied Skills Indicator */
+.ele-applied-skills-container {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+
+.ele-applied-skills-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--background-modifier-hover);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.ele-applied-skills-icon {
+  display: flex;
+  align-items: center;
+  color: var(--interactive-accent);
+}
+
+.ele-applied-skills-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ele-applied-skills-text {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-normal);
+}
+
+.ele-applied-skills-toggle-all,
+.ele-applied-skill-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.15s ease;
+}
+
+.ele-applied-skills-toggle-all:hover,
+.ele-applied-skill-remove:hover {
   background: var(--background-modifier-hover);
   color: var(--text-normal);
 }
 
-.ele-file-chip:hover {
+.ele-applied-skills-toggle-all svg,
+.ele-applied-skill-remove svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ele-applied-skills-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.ele-applied-skill {
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.ele-applied-skill:last-child {
+  border-bottom: none;
+}
+
+.ele-applied-skill-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.ele-applied-skill-header:hover {
   background: var(--background-modifier-hover);
 }
 
-/* Message Queue Indicator (shown below flavor text in thinking indicator) */
-.ele-queue-indicator {
-  display: none;
+.ele-applied-skill-toggle {
+  display: flex;
+  align-items: center;
+  color: var(--text-muted);
+}
+
+.ele-applied-skill-toggle svg {
+  width: 14px;
+  height: 14px;
+}
+
+.ele-applied-skill-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-normal);
+}
+
+.ele-applied-skill-desc {
+  flex: 1;
   font-size: 12px;
   color: var(--text-muted);
-  font-style: normal;
-  margin-top: 2px;
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-left: 4px;
 }
 
-/* Light blue border when instruction mode is active */
-.ele-input-instruction-mode {
-  border-color: #60a5fa !important;
-  box-shadow: 0 0 0 1px #60a5fa;
+.ele-applied-skill-content {
+  display: none;
+  padding: 0 12px 12px 38px;
+  background: var(--background-primary);
 }
 
-/* Pink border when bash mode is active */
-.ele-input-bang-bash-mode {
-  border-color: #f472b6 !important;
-  box-shadow: 0 0 0 1px #f472b6;
+.ele-applied-skill.expanded .ele-applied-skill-content {
+  display: block;
 }
 
-/* Monospace input while in bash mode */
-.ele-input-wrapper.ele-input-bang-bash-mode .ele-input {
-  font-family: var(--font-monospace);
+.ele-applied-skill-content-pre {
+  margin: 0;
+  padding: 10px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-normal);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow-y: auto;
 }

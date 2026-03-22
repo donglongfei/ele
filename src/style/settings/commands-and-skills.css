@@ -1,0 +1,166 @@
+/* Commands and Skills Settings */
+
+.ele-cas-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--background-modifier-border);
+  margin-bottom: 12px;
+}
+
+.ele-cas-label {
+  font-weight: 600;
+  font-size: 1.1em;
+  color: var(--text-normal);
+}
+
+.ele-cas-header-actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* Section Headers */
+.ele-cas-section-header {
+  display: flex;
+  align-items: baseline;
+  padding: 16px 0 8px 0;
+  margin-top: 8px;
+  border-bottom: 1px solid var(--background-modifier-border-hover);
+}
+
+.ele-cas-section-title {
+  font-weight: 600;
+  font-size: 0.95em;
+  color: var(--text-normal);
+}
+
+.ele-cas-section-location {
+  font-size: 0.85em;
+  color: var(--text-muted);
+  margin-left: 8px;
+  font-family: var(--font-monospace);
+}
+
+/* List Container */
+.ele-cas-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+/* Item Row */
+.ele-cas-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--background-secondary);
+  transition: background-color 0.15s ease;
+}
+
+.ele-cas-item:hover {
+  background: var(--background-modifier-hover);
+}
+
+.ele-cas-info {
+  flex: 1;
+  min-width: 0;
+  margin-right: 12px;
+}
+
+.ele-cas-item-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.ele-cas-item-name {
+  font-weight: 500;
+  color: var(--text-normal);
+  font-family: var(--font-monospace);
+  font-size: 0.95em;
+}
+
+.ele-cas-item-hint {
+  font-size: 0.85em;
+  color: var(--text-muted);
+  font-family: var(--font-monospace);
+}
+
+.ele-cas-item-desc {
+  font-size: 0.85em;
+  color: var(--text-muted);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* Badges */
+.ele-cas-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75em;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.ele-cas-badge--obsidian {
+  background: var(--background-modifier-success);
+  color: var(--text-success);
+}
+
+.ele-cas-badge--openclaw {
+  background: var(--background-modifier-form-field);
+  color: var(--text-muted);
+  border: 1px solid var(--background-modifier-border);
+}
+
+.ele-cas-badge--user {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+/* Actions */
+.ele-cas-item-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* Empty State */
+.ele-cas-empty-state {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  border: 1px dashed var(--background-modifier-border);
+}
+
+/* Settings Description */
+.opencodian-cas-settings-desc {
+  margin-bottom: 16px;
+}
+
+.opencodian-cas-settings-desc .setting-item-description {
+  color: var(--text-muted);
+  font-size: 0.9em;
+  line-height: 1.5;
+}
+
+/* Container */
+.opencodian-commands-and-skills-container {
+  margin-bottom: 24px;
+}

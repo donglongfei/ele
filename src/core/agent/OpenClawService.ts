@@ -76,6 +76,7 @@ interface OpenClawMessage {
  */
 interface ResponseHandler {
   id: string;
+  sessionKey: string; // Associated session for routing
   onChunk: (chunk: StreamChunk) => void;
   onDone: () => void;
   onError: (error: Error) => void;
@@ -485,10 +486,17 @@ export class OpenClawService {
   }
 
   private handleAgentResponse(payload: any): void {
+    // Extract sessionKey from payload for routing
+    const sessionKey = payload.sessionKey || payload.data?.sessionKey;
+    if (!sessionKey) {
+      console.warn('[OpenClawService] Agent response without sessionKey:', payload);
+      return;
+    }
+
     // Handle lifecycle events
     if (payload.stream === 'lifecycle') {
       if (payload.data?.phase === 'end') {
-        this.emitDone();
+        this.emitDoneForSession(sessionKey);
       }
       return;
     }
@@ -498,29 +506,38 @@ export class OpenClawService {
       const delta = payload.data?.delta;
       if (delta) {
         // Skip transformToStreamChunk - emit directly for better performance
-        this.emitChunk({ type: 'text', content: delta });
+        this.emitChunkForSession(sessionKey, { type: 'text', content: delta });
       }
     }
   }
 
   private handleAgentThinking(payload: any): void {
+    const sessionKey = payload.sessionKey || payload.data?.sessionKey;
+    if (!sessionKey) return;
+    
     const chunk = this.transformToStreamChunk('thinking', payload);
     if (chunk) {
-      this.emitChunk(chunk);
+      this.emitChunkForSession(sessionKey, chunk);
     }
   }
 
   private handleToolCall(payload: any): void {
+    const sessionKey = payload.sessionKey || payload.data?.sessionKey;
+    if (!sessionKey) return;
+    
     const chunk = this.transformToStreamChunk('tool_use', payload);
     if (chunk) {
-      this.emitChunk(chunk);
+      this.emitChunkForSession(sessionKey, chunk);
     }
   }
 
   private handleToolResult(payload: any): void {
+    const sessionKey = payload.sessionKey || payload.data?.sessionKey;
+    if (!sessionKey) return;
+    
     const chunk = this.transformToStreamChunk('tool_result', payload);
     if (chunk) {
-      this.emitChunk(chunk);
+      this.emitChunkForSession(sessionKey, chunk);
     }
   }
 
@@ -552,25 +569,40 @@ export class OpenClawService {
   }
 
   private handleError(payload: any): void {
+    const sessionKey = payload.sessionKey || payload.data?.sessionKey;
     const chunk = this.transformToStreamChunk('error', payload);
     if (chunk) {
-      this.emitChunk(chunk);
+      if (sessionKey) {
+        this.emitChunkForSession(sessionKey, chunk);
+      } else {
+        // Fallback: broadcast error to all handlers if no sessionKey
+        console.warn('[OpenClawService] Error without sessionKey, broadcasting to all handlers');
+        for (const handler of this.responseHandlers) {
+          try {
+            handler.onChunk(chunk);
+          } catch (error) {
+            console.error('[OpenClawService] Handler error:', error);
+          }
+        }
+      }
     }
   }
 
   /**
-   * Emit chunk to active response handlers (optimized for single handler)
+   * Emit chunk to handlers for a specific session only
    */
-  private emitChunk(chunk: StreamChunk): void {
-    console.log('[OpenClawService] Emitting chunk:', chunk.type, chunk);
-    // Fast path: usually only one handler
-    if (this.responseHandlers.length === 1) {
-      this.responseHandlers[0].onChunk(chunk);
+  private emitChunkForSession(sessionKey: string, chunk: StreamChunk): void {
+    // Find handlers for this specific session
+    const handlers = this.responseHandlers.filter(h => h.sessionKey === sessionKey);
+    
+    if (handlers.length === 0) {
+      // No handlers for this session - might be a background message or handler already cleaned up
+      console.debug(`[OpenClawService] No handlers for session ${sessionKey}, dropping chunk`);
       return;
     }
 
-    // Slow path: multiple handlers
-    for (const handler of this.responseHandlers) {
+    // Emit to all matching handlers (usually just one)
+    for (const handler of handlers) {
       try {
         handler.onChunk(chunk);
       } catch (error) {
@@ -580,17 +612,12 @@ export class OpenClawService {
   }
 
   /**
-   * Signal completion to active response handlers (optimized for single handler)
+   * Signal completion to handlers for a specific session only
    */
-  private emitDone(): void {
-    // Fast path: usually only one handler
-    if (this.responseHandlers.length === 1) {
-      this.responseHandlers[0].onDone();
-      return;
-    }
-
-    // Slow path: multiple handlers
-    for (const handler of this.responseHandlers) {
+  private emitDoneForSession(sessionKey: string): void {
+    const handlers = this.responseHandlers.filter(h => h.sessionKey === sessionKey);
+    
+    for (const handler of handlers) {
       try {
         handler.onDone();
       } catch (error) {
@@ -637,13 +664,17 @@ export class OpenClawService {
     }
 
     // Get or create session for this conversation
-    // Build message params with sessionKey (uses channelKey for lazy session creation)
     const messageParams = this.sessionManager.buildMessageParams(conversationId, prompt);
+
+    // Get session-scoped thinking level
+    const session = this.sessionManager.getSession(conversationId);
+    const thinkingLevel = session ? session.thinkingLevel : 'low';
 
     // Generate request ID
     const reqId = randomUUID();
 
     // Build OpenClaw agent request with sessionKey for multi-session support
+    // Include thinking level directly in the request params
     const agentRequest: any = {
       type: 'req',
       id: reqId,
@@ -651,6 +682,7 @@ export class OpenClawService {
       params: {
         ...messageParams,  // Includes message, idempotencyKey, sessionId or sessionKey
         // sessionKey format: "agent:main:obsidian-{conversationId}"
+        thinking: thinkingLevel,  // Apply session-specific thinking level
       },
     };
 
@@ -659,10 +691,11 @@ export class OpenClawService {
     let resolver: (() => void) | null = null;
     const pendingChunks: StreamChunk[] = [];
 
-    // Create response handler
+    // Create response handler associated with this session
     const handlerId = randomUUID();
     const handler: ResponseHandler = {
       id: handlerId,
+      sessionKey: conversationId, // Associate with this session
       onChunk: (chunk) => {
         pendingChunks.push(chunk);
         // Wake up generator immediately
@@ -739,12 +772,10 @@ export class OpenClawService {
 
     try {
       // Event-driven streaming with micro-batching
-      console.log('[OpenClawService] Starting event loop, handlers:', this.responseHandlers.length);
       while (!done) {
         // Yield all pending chunks (micro-batch)
         while (pendingChunks.length > 0) {
           const chunk = pendingChunks.shift()!;
-          console.log('[OpenClawService] Yielding chunk:', chunk.type);
           yield chunk;
         }
 
@@ -865,8 +896,8 @@ export class OpenClawService {
    * Dynamic configuration: set thinking level
    * OpenClaw uses thinkingLevel: off | low | medium | high | adaptive
    * 
-   * Uses chat.send to send /think command to the session.
-   * Note: webchat clients cannot use sessions.patch, must use chat.send
+   * Uses sessions.patch to update session configuration directly.
+   * Falls back to chat.send with /think: directive if sessions.patch fails.
    */
   async setThinkingLevel(
     level: 'off' | 'low' | 'medium' | 'high' | 'adaptive',
@@ -887,21 +918,24 @@ export class OpenClawService {
     console.log(`[OpenClawService] Setting thinking level: ${level}`);
     console.log(`[OpenClawService] Session channelKey: ${session.channelKey}`);
     
-    try {
-      // Use chat.send to send /think command
-      // webchat clients cannot use sessions.patch, must use chat.send
-      // Required params: sessionKey, message, idempotencyKey
-      const result = await this.sendCommand('chat.send', {
-        sessionKey: session.channelKey,
-        message: `/think ${level}`,
-        idempotencyKey: `think-${Date.now()}`,
-      });
-      
-      console.log(`[OpenClawService] Thinking level set to: ${level}`, result);
-    } catch (error) {
-      console.error(`[OpenClawService] Failed to set thinking level:`, error);
-      throw error;
+    // Store the thinking level in session scope
+    this.sessionManager.setThinkingLevel(session.channelKey, level);
+  }
+
+  /**
+   * Query the current thinking level for a session.
+   * Returns the session-scoped thinking level stored in our session manager.
+   */
+  getThinkingLevel(channelKey?: string): string | null {
+    const session = channelKey
+      ? this.sessionManager.getSession(channelKey)
+      : this.sessionManager.getActiveSession();
+
+    if (!session) {
+      return null;
     }
+
+    return this.sessionManager.getThinkingLevel(session.channelKey);
   }
 
   /**
@@ -926,10 +960,11 @@ export class OpenClawService {
     
     try {
       // Use chat.send to send /reasoning command
+      // Format: /reasoning:on or /reasoning:off (with colon, no space)
       // Required params: sessionKey, message, idempotencyKey
       const result = await this.sendCommand('chat.send', {
         sessionKey: session.channelKey,
-        message: `/reasoning ${reasoningState}`,
+        message: `/reasoning:${reasoningState}`,
         idempotencyKey: `reasoning-${Date.now()}`,
       });
       
@@ -1136,6 +1171,36 @@ export class OpenClawService {
    */
   isReady(): boolean {
     return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
+  }
+
+  /**
+   * Perform a health check by querying the Gateway status
+   * Returns true if Gateway is responsive, false otherwise
+   */
+  async checkHealth(): Promise<boolean> {
+    // First check basic connection state
+    if (!this.isReady()) {
+      // Try to reconnect
+      try {
+        await this.connect();
+      } catch {
+        return false;
+      }
+    }
+
+    // If connected, verify by calling a simple Gateway method
+    if (this.isReady()) {
+      try {
+        // Use status command which is lightweight and always available
+        await this.sendCommand('status', {});
+        return true;
+      } catch (error) {
+        console.warn('[OpenClawService] Health check failed:', error);
+        return false;
+      }
+    }
+
+    return false;
   }
 
   /**

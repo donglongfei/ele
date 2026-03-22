@@ -24,6 +24,7 @@ export interface OpenClawSession {
   createdAt: number;
   lastMessageAt: number;
   preview: string;
+  thinkingLevel: string; // Session-specific thinking level (off | low | medium | high | adaptive)
 }
 
 interface OpenClawSessionsFile {
@@ -67,6 +68,7 @@ export class OpenClawSessionManager {
       createdAt: Date.now(),
       lastMessageAt: Date.now(),
       preview: '',
+      thinkingLevel: 'low', // Default thinking level
     };
 
     this.sessions.set(channelKey, session);
@@ -142,6 +144,25 @@ export class OpenClawSessionManager {
     const session = this.sessions.get(channelKey);
     if (session) {
       session.name = name;
+    }
+  }
+
+  /**
+   * Get thinking level for a session
+   */
+  getThinkingLevel(channelKey: string): string {
+    const session = this.sessions.get(channelKey);
+    return session?.thinkingLevel || 'low';
+  }
+
+  /**
+   * Set thinking level for a session
+   */
+  setThinkingLevel(channelKey: string, level: string): void {
+    const session = this.sessions.get(channelKey);
+    if (session) {
+      session.thinkingLevel = level;
+      console.log(`[OpenClawSessionManager] Session ${channelKey} thinking level set to: ${level}`);
     }
   }
 
@@ -253,6 +274,19 @@ export class OpenClawSessionManager {
       }
     }
     this.lastSystemIdCheck = Date.now();
+  }
+
+  /**
+   * Force refresh systemId for a specific session
+   */
+  refreshSystemIdForSession(channelKey: string): void {
+    const session = this.sessions.get(channelKey);
+    if (session) {
+      const systemId = this.readSystemIdFromFile(channelKey);
+      if (systemId) {
+        session.systemId = systemId;
+      }
+    }
   }
 
   /**

@@ -1,6 +1,24 @@
+/**
+ * Instruction Mode Manager - Combines direct instruction input (#) with skill selection (#skillname)
+ * 
+ * Two modes:
+ * 1. Empty input + # : Enters direct instruction mode (type custom instruction)
+ * 2. Anywhere + #skillname : Shows skill dropdown for selection
+ */
+
+import { InstructionSkillDropdown } from './InstructionSkillDropdown';
+
+export interface InstructionSkill {
+  name: string;
+  description?: string;
+  content: string;
+}
+
 export interface InstructionModeCallbacks {
   onSubmit: (rawInstruction: string) => Promise<void>;
+  onSelectSkill: (skill: InstructionSkill) => Promise<void>;
   getInputWrapper: () => HTMLElement | null;
+  getInstructionSkills: () => Promise<InstructionSkill[]>;
   resetInputHeight?: () => void;
 }
 
@@ -9,7 +27,7 @@ export interface InstructionModeState {
   rawInstruction: string;
 }
 
-const INSTRUCTION_MODE_PLACEHOLDER = '# Save in custom system prompt';
+const INSTRUCTION_MODE_PLACEHOLDER = '# Type instruction or select skill';
 
 export class InstructionModeManager {
   private inputEl: HTMLTextAreaElement;
@@ -17,6 +35,7 @@ export class InstructionModeManager {
   private state: InstructionModeState = { active: false, rawInstruction: '' };
   private isSubmitting = false;
   private originalPlaceholder: string = '';
+  private skillDropdown: InstructionSkillDropdown | null = null;
 
   constructor(
     inputEl: HTMLTextAreaElement,
@@ -28,50 +47,163 @@ export class InstructionModeManager {
   }
 
   /**
-   * Handles keydown to detect # trigger.
-   * Returns true if the event was consumed (should prevent default).
+   * Initializes the skill dropdown component.
+   * Should be called after DOM is ready.
    */
-  handleTriggerKey(e: KeyboardEvent): boolean {
-    // Only trigger on # keystroke when input is empty and not already in mode
-    if (!this.state.active && this.inputEl.value === '' && e.key === '#') {
-      if (this.enterMode()) {
-        e.preventDefault();
-        return true;
+  initializeSkillDropdown(containerEl: HTMLElement): void {
+    if (this.skillDropdown) return;
+
+    this.skillDropdown = new InstructionSkillDropdown(
+      containerEl,
+      this.inputEl,
+      {
+        onSelect: (skill) => void this.handleSkillSelect(skill),
+        onHide: () => {
+          // Dropdown hidden
+        },
+        getSkills: () => this.callbacks.getInstructionSkills(),
       }
+    );
+  }
+
+  /**
+   * Handles keydown events.
+   * Returns true if the event was consumed.
+   */
+  handleKeydown(e: KeyboardEvent): boolean {
+    // First, let skill dropdown handle navigation if visible
+    if (this.skillDropdown?.isVisible()) {
+      return this.skillDropdown.handleKeydown(e);
     }
+
+    // Handle keys when in direct instruction mode (legacy mode - can be triggered by settings or special command)
+    if (this.state.active) {
+      return this.handleDirectModeKey(e);
+    }
+
     return false;
   }
 
-  /** Handles input changes to track instruction text. */
-  handleInputChange(): void {
-    if (!this.state.active) return;
+  /**
+   * Handle input changes - check for #skillname pattern.
+   */
+  handleInput(): void {
+    // If in direct instruction mode, track the instruction
+    if (this.state.active) {
+      const text = this.inputEl.value;
+      this.state.rawInstruction = text.startsWith('#') ? text.slice(1).trim() : text.trim();
+      return;
+    }
 
-    const text = this.inputEl.value;
-    if (text === '') {
-      this.exitMode();
-    } else {
-      this.state.rawInstruction = text;
+    // Otherwise, check for #skillname pattern
+    if (this.skillDropdown) {
+      void this.skillDropdown.checkAndShow();
     }
   }
 
   /**
-   * Enters instruction mode.
-   * Only enters if the indicator can be successfully shown.
-   * Returns true if mode was entered, false otherwise.
+   * Handle paste events to detect # at start.
    */
-  private enterMode(): boolean {
-    // Indicator is single source of truth - only enter mode if we can show it
+  handlePaste(e: ClipboardEvent): boolean {
+    if (this.state.active) return false;
+
+    const pastedText = e.clipboardData?.getData('text') || '';
+    const currentValue = this.inputEl.value;
+    const selectionStart = this.inputEl.selectionStart || 0;
+    const selectionEnd = this.inputEl.selectionEnd || 0;
+
+    // Check if paste starts with # at beginning of input
+    if (currentValue === '' && pastedText.startsWith('#')) {
+      if (this.enterDirectMode()) {
+        // Let default paste happen, then process
+        setTimeout(() => {
+          this.state.rawInstruction = this.inputEl.value.slice(1).trim();
+        }, 0);
+        return false;
+      }
+    }
+
+    // Check if we're pasting at a # trigger
+    const textBeforeSelection = currentValue.substring(0, selectionStart);
+    if (selectionStart === selectionEnd && textBeforeSelection.endsWith('#')) {
+      // Check if paste creates a valid skill name pattern
+      const testText = textBeforeSelection + pastedText;
+      const hashIndex = testText.lastIndexOf('#');
+      const textAfterHash = testText.substring(hashIndex + 1);
+      
+      if (!/\s/.test(textAfterHash) && this.skillDropdown) {
+        setTimeout(() => {
+          void this.skillDropdown?.checkAndShow();
+        }, 0);
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Check if any mode is active.
+   */
+  isActive(): boolean {
+    return this.state.active || (this.skillDropdown?.isVisible() ?? false);
+  }
+
+  /**
+   * Check if direct instruction mode is active.
+   */
+  isDirectModeActive(): boolean {
+    return this.state.active;
+  }
+
+  /**
+   * Gets the current raw instruction text (for direct mode).
+   */
+  getRawInstruction(): string {
+    return this.state.rawInstruction;
+  }
+
+  /**
+   * Clears the state.
+   */
+  clear(): void {
+    this.inputEl.value = '';
+    this.exitDirectMode();
+    this.skillDropdown?.hide();
+    this.callbacks.resetInputHeight?.();
+  }
+
+  /**
+   * Destroys the manager.
+   */
+  destroy(): void {
+    this.exitDirectMode();
+    this.skillDropdown?.destroy();
+    this.skillDropdown = null;
+  }
+
+  // ===== Private methods =====
+
+  private async handleSkillSelect(skill: InstructionSkill): Promise<void> {
+    try {
+      await this.callbacks.onSelectSkill(skill);
+    } catch (error) {
+      // Error is handled by callback
+    }
+    this.callbacks.resetInputHeight?.();
+  }
+
+  private enterDirectMode(): boolean {
     const wrapper = this.callbacks.getInputWrapper();
     if (!wrapper) return false;
 
     wrapper.addClass('ele-input-instruction-mode');
     this.state = { active: true, rawInstruction: '' };
     this.inputEl.placeholder = INSTRUCTION_MODE_PLACEHOLDER;
+
     return true;
   }
 
-  /** Exits instruction mode, restoring original state. */
-  private exitMode(): void {
+  private exitDirectMode(): void {
     const wrapper = this.callbacks.getInputWrapper();
     if (wrapper) {
       wrapper.removeClass('ele-input-instruction-mode');
@@ -80,44 +212,34 @@ export class InstructionModeManager {
     this.inputEl.placeholder = this.originalPlaceholder;
   }
 
-  /** Handles keydown events. Returns true if handled. */
-  handleKeydown(e: KeyboardEvent): boolean {
-    if (!this.state.active) return false;
-
-    // Check !e.isComposing for IME support (Chinese, Japanese, Korean, etc.)
-    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
-      // Don't handle if instruction is empty
-      if (!this.state.rawInstruction.trim()) {
+  private handleDirectModeKey(e: KeyboardEvent): boolean {
+    switch (e.key) {
+      case 'Enter':
+        if (!e.shiftKey && !e.isComposing) {
+          const rawInstruction = this.state.rawInstruction.trim();
+          if (rawInstruction) {
+            e.preventDefault();
+            void this.submitDirectInstruction();
+            return true;
+          }
+        }
         return false;
-      }
 
-      e.preventDefault();
-      this.submit();
-      return true;
+      case 'Escape':
+        if (!e.isComposing) {
+          e.preventDefault();
+          this.exitDirectMode();
+          this.inputEl.value = '';
+          return true;
+        }
+        return false;
+
+      default:
+        return false;
     }
-
-    // Check !e.isComposing for IME support (Chinese, Japanese, Korean, etc.)
-    if (e.key === 'Escape' && !e.isComposing) {
-      e.preventDefault();
-      this.cancel();
-      return true;
-    }
-
-    return false;
   }
 
-  /** Checks if instruction mode is active. */
-  isActive(): boolean {
-    return this.state.active;
-  }
-
-  /** Gets the current raw instruction text. */
-  getRawInstruction(): string {
-    return this.state.rawInstruction;
-  }
-
-  /** Submits the instruction for refinement. */
-  private async submit(): Promise<void> {
+  private async submitDirectInstruction(): Promise<void> {
     if (this.isSubmitting) return;
 
     const rawInstruction = this.state.rawInstruction.trim();
@@ -130,29 +252,5 @@ export class InstructionModeManager {
     } finally {
       this.isSubmitting = false;
     }
-  }
-
-  /** Cancels instruction mode and clears input. */
-  private cancel(): void {
-    this.inputEl.value = '';
-    this.exitMode();
-    this.callbacks.resetInputHeight?.();
-  }
-
-  /** Clears the input and resets state (called after successful submission). */
-  clear(): void {
-    this.inputEl.value = '';
-    this.exitMode();
-    this.callbacks.resetInputHeight?.();
-  }
-
-  /** Cleans up event listeners. */
-  destroy(): void {
-    // Remove indicator class and restore placeholder on destroy
-    const wrapper = this.callbacks.getInputWrapper();
-    if (wrapper) {
-      wrapper.removeClass('ele-input-instruction-mode');
-    }
-    this.inputEl.placeholder = this.originalPlaceholder;
   }
 }
